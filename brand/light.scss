@@ -8,3 +8,12 @@ $navbar-fg: #201d1a;
 $navbar-hl: #b15229;
 $footer-bg: #f8f7f2;
 $footer-fg: #201d1a;
+
+/*-- scss:rules --*/
+
+// The chart colours for light mode, one per model, checked for colour-blind separation and 3:1
+// contrast on the page background with the palette validator. scripts/chart.py reads them.
+:root {
+  --chart-opus: #b15229;
+  --chart-gemma: #2f6aa3;
+}

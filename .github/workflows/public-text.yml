@@ -5,7 +5,8 @@ name: Public text
 # squash commit on main (scripts/check_public_text.py). It runs again when the title or description
 # is edited. Dependabot's title, description and commits quote other projects' release notes, so
 # only the files are checked on its pull requests. The check and its tests use only the standard
-# library, so nothing is installed.
+# library, so nothing is installed but Python itself: 3.14, from .python-version, because the check
+# reads inside the notes' run logs and those are Zstandard zips, which zipfile reads from 3.14.
 
 on:
   pull_request:
@@ -29,8 +30,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+      - name: Python
+        run: uv python install
       - name: The check's own tests
-        run: python3 -I -m unittest discover -s tests -v
+        run: uv run --no-project python -I -m unittest discover -s tests -p test_public_text.py -v
       - name: Files, commits, title and description
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -40,7 +44,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "$AUTHOR" = "dependabot[bot]" ]; then
-            python3 -I scripts/check_public_text.py
+            uv run --no-project python -I scripts/check_public_text.py
           else
-            python3 -I scripts/check_public_text.py --commits "$BASE..$HEAD" --text-env PR_TITLE --text-env PR_BODY
+            uv run --no-project python -I scripts/check_public_text.py --commits "$BASE..$HEAD" --text-env PR_TITLE --text-env PR_BODY
           fi

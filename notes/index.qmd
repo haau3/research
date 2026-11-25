@@ -1,0 +1,14 @@
+---
+title: Notes
+subtitle: Short write-ups of small experiments, each with its code, run logs and cost.
+listing:
+  contents: "*/index.qmd"
+  sort: "date desc"
+  type: default
+  fields: [title, date, description]
+  date-format: long
+  sort-ui: false
+  filter-ui: false
+---
+
+## Every note, newest first

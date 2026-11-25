@@ -12,6 +12,11 @@ and 2 when it cannot run (a bad option or a term that is not a regular expressio
 
 It uses only the standard library, so it runs before anything is installed. Its patterns are
 compiled with re.ASCII, so \\w, \\d and \\b mean what they mean everywhere else.
+
+An evaluation log (`.eval`, a zip of JSON) is read file by file. Its text is a benchmark's and the
+models', not this repository's words, so only the credential rule and the --terms apply to it. Inspect
+compresses logs with Zstandard, which Python's zipfile reads from 3.14; on an older Python a log
+cannot be read, and the check stops with exit 2 rather than skip it.
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import zipfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
@@ -149,6 +155,19 @@ NOT_OURS = [
 # This check and its tests, which hold the patterns and their samples.
 THE_CHECK = [re.compile(r"^scripts/check_public_text\.py$"), re.compile(r"^tests/test_public_text\.py$")]
 
+# The rules an evaluation log is held to: no credential, and none of the --terms.
+LOG_RULES = [rule for rule in RULES if rule.name == "a credential"]
+
+
+def check_log(path: str, rules: Sequence[Rule]) -> list[Finding]:
+    """Every file inside an Inspect log. Raises if the log cannot be read, so it is never skipped."""
+    findings: list[Finding] = []
+    with zipfile.ZipFile(path) as log:
+        for member in log.infolist():
+            text = log.read(member).decode("utf-8", errors="replace")
+            findings += check(f"{path}:{member.filename}", text, rules)
+    return findings
+
 
 def check(where: str, text: str, rules: Sequence[Rule] = RULES) -> list[Finding]:
     findings: list[Finding] = []
@@ -205,6 +224,13 @@ def main(argv: Sequence[str]) -> int:
     if "--no-files" not in args:
         for path in filter(None, _git("ls-files", "-z").split("\0")):
             if any(p.search(path) for p in NOT_OURS) or not os.path.isfile(path):
+                continue
+            if path.endswith(".eval"):
+                try:
+                    findings += check_log(path, [*LOG_RULES, *terms])
+                except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as error:
+                    print(f"cannot check {path}: {error}", file=sys.stderr)
+                    return 2
                 continue
             # The check's own patterns are left to the private terms alone.
             file_rules = terms if any(p.search(path) for p in THE_CHECK) else rules

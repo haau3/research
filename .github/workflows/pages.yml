@@ -29,8 +29,10 @@ jobs:
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           enable-cache: true
-      - name: Install Quarto
+      - name: Install
         run: uv sync --locked
+      - name: Numbers
+        run: uv run python scripts/note_numbers.py
       - name: Render
         run: uv run quarto render
       - name: Body text is 16 px or more
