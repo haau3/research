@@ -103,6 +103,36 @@ class FromTheLogs(unittest.TestCase):
             figures.compute(copy_fixtures(), prices)
 
 
+class Cost(unittest.TestCase):
+    """Cost is summed call by call: a call answered from Inspect's cache is free, a batched call costs
+    half, and uncached input, cache writes, cache reads and output each have their own price."""
+
+    def test_worked_by_hand(self) -> None:
+        import tomllib
+
+        from inspect_ai.model import GenerateConfig, ModelUsage
+
+        log = read_eval_log(str(log_of(FIXTURES, "opus")))
+        events = [e for s in log.samples for e in s.events if e.event == "model" and e.output]
+        for event in events:
+            event.cache = "read"
+        plain, batched = events[0], events[1]
+        for event in (plain, batched):
+            event.cache = None
+            event.model = "test/model"
+        plain.output.usage = ModelUsage(
+            input_tokens=1_000_000, input_tokens_cache_write=1_000_000, input_tokens_cache_read=1_000_000, output_tokens=0
+        )
+        batched.output.usage = ModelUsage(input_tokens=0, output_tokens=1_000_000)
+        batched.config = GenerateConfig(batch=True)
+        prices = tomllib.loads(
+            'read = 2026-11-25\nbatch_discount = 0.5\n[models."test/model"]\n'
+            "input = 2\noutput = 4\ncache_write = 3\ncache_read = 1\n"
+        )
+        # Plain: 2 + 3 + 1 for a million each of input, writes and reads. Batched: half of 4.
+        self.assertAlmostEqual(figures.cost(log, prices), 2 + 3 + 1 + 4 * 0.5)
+
+
 class Prices(unittest.TestCase):
     def test_every_price_names_its_page(self) -> None:
         import tomllib
