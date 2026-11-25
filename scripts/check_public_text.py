@@ -68,6 +68,20 @@ def _changelog_link(match: str, text: str, index: int) -> bool:
     )
 
 
+def _a_colour(match: str, text: str, index: int) -> bool:
+    # A hex colour that happens to be all digits, as a stylesheet or a quoted value writes it:
+    # `$navbar-bg: #171614;` or `night: "#171614"`. In a sentence the same shape is an issue number.
+    if len(match) - 1 not in (3, 4, 6, 8):
+        return False
+    before = text[index - 1] if index > 0 else ""
+    after = text[index + len(match) : index + len(match) + 1]
+    return before in ("\"", "'") or after in (";", "\"", "'")
+
+
+def _issue_or_colour(match: str, text: str, index: int) -> bool:
+    return _changelog_link(match, text, index) or _a_colour(match, text, index)
+
+
 def _standard_id(match: str, _text: str, _index: int) -> bool:
     return match.split("-")[0] in STANDARD_PREFIXES
 
@@ -93,7 +107,7 @@ RULES: list[Rule] = [
     Rule(
         "an issue or pull request number without the repository it belongs to",
         re.compile(r"(?<![\w/&])#\d+\b|\bissues? \d+\b", re.I | re.A),
-        _changelog_link,
+        _issue_or_colour,
     ),
     Rule("a ticket or work-item id", re.compile(r"\b[A-Z]{2,10}-\d{1,2}[a-z]?\b", re.A), _standard_id),
     Rule("a planning word", re.compile(r"\b(milestones?|epics?|backlog|roadmap)\b", re.I | re.A)),

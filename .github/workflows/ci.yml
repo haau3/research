@@ -1,0 +1,49 @@
+name: CI
+
+# Every pull request builds the site as the Pages workflow will, with the Quarto that uv.lock pins,
+# and fails on a new accessibility finding or on body text under 16 px. GitHub Pages has no preview
+# of a pull request, so this build is the check, and its report is the run's summary.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: true
+      - name: Tests
+        run: python3 -I -m unittest discover -s tests -v
+      - name: Install Quarto
+        run: uv sync --locked
+      - name: Render
+        run: uv run quarto render
+      - name: Body text is 16 px or more
+        run: python3 -I scripts/check_text_size.py _site
+      # The runner's own Chrome takes longer to start than the scan waits for, so the scan uses the
+      # headless Chrome Quarto installs (the current stable from Chrome for Testing), as Quarto's
+      # own recipe for CI does.
+      - name: Headless Chrome
+        run: uv run quarto install chrome-headless-shell --no-prompt
+      # Every page, at 1440 and 320 px wide, light and dark. A finding that is accepted rather than
+      # fixed goes in _axe-baseline.json with the reason.
+      - name: Accessibility
+        run: uv run quarto call axe _site --fail-on minor
+      - name: Accessibility report
+        if: always()
+        run: if [ -f _axe-checks/report.md ]; then cat _axe-checks/report.md >> "$GITHUB_STEP_SUMMARY"; fi

@@ -1,0 +1,10 @@
+/*-- scss:defaults --*/
+
+// The navigation bar and the footer sit on the page's own background (_brand.yml's cream and ink),
+// so every link on them keeps the contrast it has on the page. Quarto reads a theme file's defaults
+// before the brand's, so the values are written out here.
+$navbar-bg: #f8f7f2;
+$navbar-fg: #201d1a;
+$navbar-hl: #b15229;
+$footer-bg: #f8f7f2;
+$footer-fg: #201d1a;

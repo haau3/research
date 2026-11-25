@@ -1,0 +1,51 @@
+/*-- scss:rules --*/
+
+// The fonts are variable: one file holds every weight. Quarto declares each as `normal` only, so a
+// heading at 600 would be thickened by the browser instead; these give it the whole range.
+// The files are the ones _brand.yml lists, which Quarto copies beside this stylesheet.
+@font-face {
+  font-family: "Geist";
+  src: url("brand/fonts/Geist-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("brand/fonts/Fraunces-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("brand/fonts/GeistMono-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+// A readable measure for pages of prose.
+main.content {
+  max-width: 44rem;
+}
+
+.navbar {
+  border-bottom: 1px solid rgba($body-color, 0.12);
+}
+
+// On a phone the site's name wraps rather than ending in an ellipsis.
+.navbar-brand-container,
+.navbar-brand,
+.navbar-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  min-width: 0;
+}
+
+.nav-footer {
+  border-top: 1px solid rgba($body-color, 0.12);
+}

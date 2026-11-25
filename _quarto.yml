@@ -1,0 +1,42 @@
+project:
+  type: website
+  output-dir: _site
+  # The site's pages are .qmd files; the repository's own Markdown (README, CONTRIBUTING) is not.
+  render:
+    - "*.qmd"
+
+website:
+  title: haau3 Research
+  description: Open research on caregiving, with and without AI.
+  site-url: https://research.haau3.com
+  repo-url: https://github.com/haau3/research
+  navbar:
+    left:
+      - href: about.qmd
+        text: About
+    tools:
+      - icon: github
+        href: https://github.com/haau3/research
+        aria-label: The source on GitHub
+  page-footer:
+    left: |
+      Copyright 2026 Brian K. Fung Media LLC, doing business as haau3.
+    right: |
+      Writing and data [CC BY 4.0](https://github.com/haau3/research/blob/main/LICENSE-CC-BY-4.0).
+      Code [MIT](https://github.com/haau3/research/blob/main/LICENSE).
+
+# Code runs on the computer that writes a page, never in the build: its results are stored in
+# _freeze/ and committed beside the page.
+execute:
+  freeze: auto
+
+lang: en
+
+format:
+  html:
+    theme:
+      light: [brand, brand/light.scss, brand/site.scss]
+      dark: [brand, brand/dark.scss, brand/site.scss]
+    respect-user-color-scheme: true
+    toc: false
+    smooth-scroll: false

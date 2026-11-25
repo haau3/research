@@ -68,6 +68,12 @@ class AllowsItsOwnText(unittest.TestCase):
         self.assertEqual(found("see haau3/research-private"), ["haau3/research-private"])
         self.assertEqual(found("see haau3/haau3-client"), ["haau3/haau3-client", "haau3-client"])
 
+    def test_a_colour_written_as_a_stylesheet_writes_it(self) -> None:
+        self.assertEqual(found('$navbar-bg: #171614;\nnight: "#171614"\ncream: \'#123\''), [])
+        # The controls: the same digits in a sentence, and a length no colour has.
+        self.assertEqual(found("fixed in #171614 last week"), ["#171614"])
+        self.assertEqual(found('see "#12345"'), ["#12345"])
+
     def test_an_id_with_a_standard_prefix_only(self) -> None:
         self.assertEqual(found("GPT-5 and BY-4"), [])
         self.assertEqual(found("GPTX-5 and BYE-4"), ["GPTX-5", "BYE-4"])
