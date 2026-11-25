@@ -6,15 +6,18 @@ shapes its own text uses. The samples are made up.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from check_public_text import check, commit_range, term_rules  # noqa: E402
+from check_public_text import LOG_RULES, check, check_log, commit_range, term_rules  # noqa: E402
 
 
 def found(text: str) -> list[str]:
@@ -91,6 +94,40 @@ class Options(unittest.TestCase):
     def test_a_repositorys_first_push_checks_every_commit(self) -> None:
         self.assertEqual(commit_range("no-such-ref-anywhere..HEAD"), "HEAD")
         self.assertEqual(commit_range("HEAD..HEAD"), "HEAD..HEAD")
+
+
+@unittest.skipUnless(hasattr(zipfile, "ZIP_ZSTANDARD"), "Inspect's logs are Zstandard zips, which Python reads from 3.14")
+class InsideALog(unittest.TestCase):
+    """An Inspect log is a Zstandard zip of JSON. A credential inside one is found; a benchmark's or a
+    model's own words are not held to the rules for this repository's words."""
+
+    def log(self, text: str) -> str:
+        path = Path(tempfile.mkdtemp()) / "run.eval"
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_ZSTANDARD) as log:
+            log.writestr("header.json", '{"eval": {"model": "openai/gpt-6-luna"}}')
+            log.writestr("samples/1_epoch_1.json", json.dumps({"output": text}))
+        return str(path)
+
+    def test_a_credential_inside_a_log_is_found(self) -> None:
+        findings = check_log(self.log("the key was sk-ant-api03-EXAMPLEexampleEXAMPLE00"), LOG_RULES)
+        self.assertEqual([f.match for f in findings], ["sk-ant-api03-EXAMPLEexampleEXAMPLE00"])
+        self.assertTrue(findings[0].where.endswith("run.eval:samples/1_epoch_1.json:1"), findings[0].where)
+
+    def test_a_models_words_are_not_held_to_this_repositorys(self) -> None:
+        # The control: the same words in a file of this repository are found.
+        words = "Ask the owner of the roadmap about issue 12."
+        self.assertEqual(check_log(self.log(words), LOG_RULES), [])
+        self.assertNotEqual(found(words), [])
+
+    def test_a_private_term_inside_a_log_is_found(self) -> None:
+        rules = [*LOG_RULES, *term_rules("secret-codename\n")]
+        self.assertEqual([f.match for f in check_log(self.log("about Secret-Codename"), rules)], ["Secret-Codename"])
+
+    def test_a_log_that_cannot_be_read_stops_the_check(self) -> None:
+        path = Path(tempfile.mkdtemp()) / "broken.eval"
+        path.write_bytes(b"not a zip")
+        with self.assertRaises(zipfile.BadZipFile):
+            check_log(str(path), LOG_RULES)
 
 
 class ThisRepository(unittest.TestCase):
