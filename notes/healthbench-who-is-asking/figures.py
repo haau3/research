@@ -162,21 +162,29 @@ def read_check_run(path: Path) -> CheckRun:
 
 
 def cost(log: EvalLog, prices: dict) -> float:
-    """Dollars, from the log's token counts and prices.toml. The Batch API halves a batched run's price."""
-    discount = prices["batch_discount"] if (log.eval.metadata or {}).get("batch") else 1.0
+    """Dollars, summed call by call from the model events in the log and prices.toml.
+
+    Call by call, because a judge that grades a finished log (Gemma's run) is recorded in its events
+    but not in the log's totals. A call Inspect answered from its own cache cost nothing; a call sent
+    through a Batch API costs half. Inspect reports uncached input, cache writes and cache reads as
+    separate counts (Opus's trial: 1,114 input beside 1,944 written), each priced at its own rate."""
     total = 0.0
-    for model, usage in (log.stats.model_usage or {}).items():
-        if model not in prices["models"]:
-            raise KeyError(f"prices.toml has no price for {model}")
-        price = prices["models"][model]
-        uncached = usage.input_tokens - (usage.input_tokens_cache_read or 0) - (usage.input_tokens_cache_write or 0)
-        total += (
-            max(uncached, 0) * price["input"]
-            + (usage.input_tokens_cache_write or 0) * price.get("cache_write", price["input"])
-            + (usage.input_tokens_cache_read or 0) * price.get("cache_read", price["input"])
-            + usage.output_tokens * price["output"]
-        ) / 1e6
-    return total * discount
+    for sample in log.samples or []:
+        for event in sample.events:
+            if event.event != "model" or event.cache == "read" or not event.output or not event.output.usage:
+                continue
+            if event.model not in prices["models"]:
+                raise KeyError(f"prices.toml has no price for {event.model}")
+            price, usage = prices["models"][event.model], event.output.usage
+            written, read = usage.input_tokens_cache_write or 0, usage.input_tokens_cache_read or 0
+            dollars = (
+                usage.input_tokens * price["input"]
+                + written * price.get("cache_write", price["input"])
+                + read * price.get("cache_read", price["input"])
+                + usage.output_tokens * price["output"]
+            ) / 1e6
+            total += dollars * (prices["batch_discount"] if event.config and event.config.batch else 1.0)
+    return total
 
 
 def points(x: float) -> str:

@@ -18,6 +18,8 @@ cache_read = 0.20
 source = "https://developers.openai.com/api/docs/models/gpt-6-luna"
 input = 0.10
 output = 0.50
+cache_write = 0.125
+cache_read = 0.01
 
 # The laptop model and Inspect's stand-in model cost nothing per token.
 [models."openai-api/mlx/mlx-community/gemma-3-12b-it-qat-4bit"]

@@ -28,6 +28,7 @@ from pathlib import Path
 os.environ["INSPECT_EVALS_CACHE_DIR"] = "/tmp/inspect_evals"
 
 import inspect_ai  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
 from inspect_ai.log import read_eval_log, write_eval_log  # noqa: E402
 from inspect_ai.model import GenerateConfig, Model, get_model  # noqa: E402
 from inspect_evals.constants import INSPECT_EVALS_CACHE_PATH  # noqa: E402
@@ -126,6 +127,8 @@ def score_gemma(logs: Path, batch: bool) -> bool:
         sys.exit(f"{found[0].name}: not a finished, unscored gemma run")
     os.environ.setdefault("MLX_BASE_URL", GEMMA_SERVER)
     os.environ.setdefault("MLX_API_KEY", "not-needed")
+    # eval() reads the API keys from .env itself; scoring a finished log does not, so read it here.
+    load_dotenv(HERE.parents[1] / ".env")
     judge = get_model(JUDGE, config=GenerateConfig(batch=batch))
     scored = inspect_ai.score(log, theme_task(judge).scorer, action="overwrite", copy=False)
     scored.eval.metadata = (scored.eval.metadata or {}) | {"batch": batch, "judged_after_answers": True}
