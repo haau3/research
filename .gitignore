@@ -1,0 +1,11 @@
+# Quarto's output and its working files
+/_site/
+/.quarto/
+/_axe-checks/
+**/*.quarto_ipynb
+
+# Python
+/.venv/
+__pycache__/
+
+.DS_Store
