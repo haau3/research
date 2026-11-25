@@ -1,0 +1,20 @@
+[project]
+name = "research"
+version = "0.0.0"
+description = "The site at research.haau3.com: open research on caregiving, with and without AI."
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+# Quarto builds the site. Its version is pinned here and locked in uv.lock, so the laptop and the
+# workflow build with the same one: `uv run quarto render`.
+dev = ["quarto-cli==1.11.9"]
+
+[tool.uv]
+package = false
+required-version = ">=0.11.8"
+# quarto-cli asks for Jupyter (about a hundred packages) so that Quarto can run code. The site runs
+# none when it builds: each page's results are stored by `freeze` on the computer that ran it. This
+# removes the three packages wherever they are asked for, so the first page whose code needs one of
+# them takes it off this list.
+exclude-dependencies = ["jupyter", "nbclient", "wheel"]

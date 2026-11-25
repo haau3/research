@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: >-
+  To cite a note or a study, use the DOI shown on its page. To cite haau3 Research as a whole,
+  cite it as below.
+title: haau3 Research
+abstract: Open research on caregiving, with and without AI.
+type: software
+authors:
+  - family-names: Fung
+    given-names: Brian K.
+    affiliation: haau3
+license:
+  - MIT
+  - CC-BY-4.0
+url: "https://research.haau3.com"
+repository-code: "https://github.com/haau3/research"
+keywords:
+  - caregiving
+  - artificial intelligence
+  - evaluation
+  - synthetic data

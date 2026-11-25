@@ -1,0 +1,14 @@
+---
+title: haau3 Research
+subtitle: Open research on caregiving, with and without AI.
+---
+
+haau3 Research looks for ways to make caregiving better. Much of the work measures how AI models
+answer health questions, starting with questions about medications. We begin with small
+experiments and publish each one as a short note: what we tried, the code, the run logs, the
+results with their uncertainty, and what it cost.
+
+Everything here is open for anyone to learn from and build on. Every patient in this work is
+synthetic. No real person's health data is used.
+
+[What haau3 Research is, and how to cite it](about.qmd)

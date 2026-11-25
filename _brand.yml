@@ -1,0 +1,53 @@
+# haau3's palette and type, in the brand.yml format Quarto reads. Each colour pair has a light and a
+# dark value; the text pairs meet WCAG 2.2 AA (4.5:1) on the page background in both modes.
+meta:
+  name: haau3 Research
+  link: https://research.haau3.com
+
+color:
+  palette:
+    cream: "#f8f7f2"
+    ink: "#201d1a"
+    brick: "#b15229"
+    stone: "#6e6962"
+    wash: "#eeede8"
+    hairline: "#e5e3de"
+    night: "#171614"
+    paper: "#f2f1ee"
+    ember: "#d3754d"
+    ash: "#a8a49c"
+    slate: "#2d2b29"
+  background:
+    light: cream
+    dark: night
+  foreground:
+    light: ink
+    dark: paper
+  primary:
+    light: brick
+    dark: ember
+
+typography:
+  fonts:
+    - family: Geist
+      source: file
+      files:
+        - path: brand/fonts/Geist-latin.woff2
+    - family: Fraunces
+      source: file
+      files:
+        - path: brand/fonts/Fraunces-latin.woff2
+    - family: Geist Mono
+      source: file
+      files:
+        - path: brand/fonts/GeistMono-latin.woff2
+  base:
+    family: Geist
+    size: 1rem
+    line-height: 1.6
+  headings:
+    family: Fraunces
+    weight: 600
+  monospace: Geist Mono
+  link:
+    decoration: underline
