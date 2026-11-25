@@ -1,0 +1,137 @@
+---
+title: "A frontier model and a laptop model on HealthBench's who-is-asking conversations"
+description: "Claude Opus 5.5 and Gemma 3 12B on HealthBench's conversations where a good answer depends on who is asking, each score with its standard error, and the judge checked against physicians."
+date: 2026-11-25
+author:
+  - name: Brian K. Fung
+    affiliation: haau3
+metadata-files:
+  - _results.yml
+---
+
+## What we asked
+
+How far is an open-weight model running on a laptop from a frontier model, on health conversations
+where a good answer depends on who is asking? We ran one ready-made evaluation, HealthBench, on two
+models: Claude Opus 5.5 through Anthropic's API, and Gemma 3 12B on a laptop with an Apple M1 Pro
+chip and 16 GB of memory. This is the first of a few small experiments, each meant to learn one tool in public. This
+one is about Inspect, open-weight models on a laptop, and error bars.
+
+## What we ran
+
+[HealthBench](https://openai.com/index/healthbench/) is OpenAI's benchmark of 5,000 health
+conversations, each with criteria written by physicians: what a good reply should do, and what it
+should not. We used all {{< meta r.models.opus.all.n >}} conversations in the theme it tags
+*communication*, where the right reply depends on whether the user is a layperson or a health
+professional. Physicians agreed that {{< meta r.groups.layperson.n >}} of them come from a layperson
+and {{< meta r.groups.professional.n >}} from a health professional. Each model answered each
+conversation once. A judge model then
+read each answer against each of its criteria, and the answer's score is the points it earned over
+the points it could have earned.
+
+- **Claude Opus 5.5** (`{{< meta r.models.opus.versions >}}`) at its default settings, which think
+  before answering.
+- **Gemma 3 12B**, Google's open-weight model, quantized to 4 bits by Google's own training method
+  (`mlx-community/gemma-3-12b-it-qat-4bit`, revision `66fc51e`), served on the laptop by mlx-lm at
+  Google's published sampling settings. It does not think before answering.
+- **The judge**, `{{< meta r.judge.model >}}`, OpenAI's replacement for the two models HealthBench was
+  built with, which OpenAI retires in January 2027.
+
+The runs used [Inspect](https://inspect.aisi.org.uk/) {{< meta r.inspect.inspect_ai >}} and its
+HealthBench task from inspect_evals {{< meta r.inspect.inspect_evals >}}, on
+{{< meta r.runs.opus.date >}} (Opus), {{< meta r.runs.gemma.date >}} (Gemma) and
+{{< meta r.runs.check.date >}} (the judge's check).
+
+## What we found
+
+{{< include _chart.md >}}
+
+::: {.table-scroll tabindex="0" role="region" aria-label="Scores by model and user group"}
+{{< include _table-scores.md >}}
+:::
+
+::: {.table-scroll tabindex="0" role="region" aria-label="Scores by model and axis"}
+{{< include _table-axes.md >}}
+:::
+
+Claude Opus 5.5 scored {{< meta r.models.opus.all.score >}} and Gemma 3 12B scored
+{{< meta r.models.gemma.all.score >}}, out of 100. Because both answered the same conversations, the
+gap is measured conversation by conversation: Opus minus Gemma is
+{{< meta r.difference.all.score >}} points, with a standard error of {{< meta r.difference.all.se >}}
+and a 95% interval from {{< meta r.difference.all.low >}} to {{< meta r.difference.all.high >}}.
+
+### By who is asking
+
+The two user groups are different conversations, so a difference between them says nothing about
+whether a model changes its answer for the person asking. Testing that needs the same question
+asked by different people, which is the design of our next study. Here they are description only.
+
+### Length
+
+HealthBench rewards complete answers, so a longer answer has more chances to meet a criterion. Opus's
+answers averaged {{< meta r.models.opus.length >}} characters and Gemma's
+{{< meta r.models.gemma.length >}}. OpenAI's length adjustment for HealthBench Professional
+([arXiv 2604.27470](https://arxiv.org/abs/2604.27470), section 4.1) takes 0.0147 points off a
+score of 1 for every 500 characters over 2,000, and adds the same for every 500 under. With it,
+the gap is {{< meta r.difference.adjusted.score >}} points (standard error
+{{< meta r.difference.adjusted.se >}}). The coefficient was fitted on a related benchmark, not this
+one.
+
+## How far to trust the judge
+
+Every score here rests on a model's reading of each criterion. Before paying for the main runs we
+checked the judge against physicians: on {{< meta r.judge.rows >}} answers that two physicians each
+graded against one of this theme's criteria, the judge's macro F1 (the average of its F1 scores for
+"met" and "not met") was {{< meta r.judge.f1 >}}. Scored the same way against each other, the
+{{< meta r.judge.physicians >}} physicians averaged {{< meta r.judge.physician_weighted >}}, and the
+median physician scored {{< meta r.judge.physician_median >}}. We fixed the median physician as the
+judge's bar before running the check.
+
+## What it cost
+
+{{< meta r.cost.total >}} in API fees: {{< meta r.cost.opus >}} for Opus's answers and their judging,
+{{< meta r.cost.gemma >}} for judging Gemma's answers, and {{< meta r.cost.check >}} for the judge's
+check. Gemma ran on the laptop at no charge. Each cost is computed from the token counts in the logs
+and the prices on each vendor's page on {{< meta r.prices_read >}}
+([prices.toml](https://github.com/haau3/research/blob/main/notes/healthbench-who-is-asking/prices.toml)).
+
+## Who wrote the criteria
+
+HealthBench's criteria were written by the physicians who built the benchmark, not by haau3. Nobody
+at haau3 wrote or changed a criterion for this note. The judge, not a person, applied them.
+
+## Limits
+
+- **A small laptop model may differ from a frontier one** in ways one benchmark does not show, and
+  this Gemma is compressed to 4 bits.
+- **Opus thinks before it answers and Gemma does not.** This compares the two as people meet them,
+  not two equal setups.
+- **One answer per conversation.** A second run would give somewhat different answers; the standard
+  errors cover the choice of conversations, not that.
+- **The judge is a model**, and it is not the one HealthBench was built with, so these scores are
+  not directly comparable with published HealthBench scores.
+- **Longer answers score higher** on this benchmark; the length-adjusted gap is shown beside the
+  plain one.
+- **The user groups are different conversations**, so they show no tailoring.
+- **HealthBench is public**, so either model may have seen its conversations in training.
+
+## Run it yourself
+
+The code, the prompts and the run logs are in this note's
+[folder](https://github.com/haau3/research/tree/main/notes/healthbench-who-is-asking). Its README
+gives the commands. To read every answer and every judgment in Inspect's viewer:
+
+```sh
+uv sync --group harness
+uv run --group harness inspect view --log-dir notes/healthbench-who-is-asking/logs
+```
+
+## How to cite, and the licences
+
+Fung, B. K. (2026). *A frontier model and a laptop model on HealthBench's who-is-asking
+conversations.* haau3 Research. <https://research.haau3.com/notes/healthbench-who-is-asking/>
+
+This note's writing and results are under
+[CC BY 4.0](https://github.com/haau3/research/blob/main/LICENSE-CC-BY-4.0), and its code under
+[MIT](https://github.com/haau3/research/blob/main/LICENSE). HealthBench is © OpenAI, released under
+the MIT licence, and its conversations appear in our logs under that licence.
