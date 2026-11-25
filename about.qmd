@@ -63,3 +63,5 @@ under [GitHub's privacy statement](https://docs.github.com/en/site-policy/privac
 Write to [hello@haau3.com](mailto:hello@haau3.com) with a correction, a question or a safety
 concern. If a note finds a specific, repeatable way to get dangerous advice from a named product,
 we tell its maker before we publish it.
+
+[This line is planted to fail the check.]{style="color: #bbbbbb"}
