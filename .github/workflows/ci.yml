@@ -35,8 +35,13 @@ jobs:
         run: uv run quarto render
       - name: Body text is 16 px or more
         run: python3 -I scripts/check_text_size.py _site
-      # Every page, at 1440 and 320 px wide, light and dark, in the runner's Chrome. A finding that
-      # is accepted rather than fixed goes in _axe-baseline.json with the reason.
+      # The runner's own Chrome takes longer to start than the scan waits for, so the scan uses the
+      # headless Chrome Quarto installs (the current stable from Chrome for Testing), as Quarto's
+      # own recipe for CI does.
+      - name: Headless Chrome
+        run: uv run quarto install chrome-headless-shell --no-prompt
+      # Every page, at 1440 and 320 px wide, light and dark. A finding that is accepted rather than
+      # fixed goes in _axe-baseline.json with the reason.
       - name: Accessibility
         run: uv run quarto call axe _site --fail-on minor
       - name: Accessibility report
