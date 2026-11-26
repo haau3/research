@@ -2,6 +2,7 @@
 title: "A frontier model and a small open-weight model on a laptop, compared on HealthBench's expertise-tailored communication"
 description: "Claude Opus 5.5 and Gemma 3 12B on health questions from laypeople and health professionals, graded on whether each reply is accurate, complete and pitched at the person asking, each score with its standard error, and the judge checked against physicians."
 date: 2026-11-25
+doi: 10.5281/zenodo.24573238
 author:
   - name: Brian K. Fung
     affiliation: haau3
@@ -153,8 +154,8 @@ On all {{< meta r.judge.rows >}} rows of the check, GPT-4.1's macro F1 was {{< m
 against the median physician's {{< meta r.judge.physician_median >}}. The
 {{< meta r.judge.physicians >}} physicians averaged {{< meta r.judge.physician_weighted >}} against
 each other. Trying the judges on those {{< meta r.trial.rows >}} rows cost {{< meta r.trial.cost >}}.
-The first judge's check on all {{< meta r.judge.rows >}} rows is attached to the release, since its
-log is too large to keep in the repository.
+The first judge's check on all {{< meta r.judge.rows >}} rows is attached to the
+[GitHub release](https://github.com/haau3/research/releases/tag/v0.1.1), since its log is too large to keep in the repository.
 
 The physicians' grades cover only the theme's shared criteria, the pair that every conversation with
 an agreed user label carries: {{< meta r.models.opus.shared >}} of the
@@ -228,7 +229,10 @@ uv run --group harness inspect view --log-dir notes/healthbench-expertise-tailor
 ## How to cite, and the licences
 
 Fung, B. K. (2026). *A frontier model and a small open-weight model on a laptop, compared on
-HealthBench's expertise-tailored communication.* haau3 Research. <https://research.haau3.com/notes/healthbench-expertise-tailored/>
+HealthBench's expertise-tailored communication.* haau3 Research. <https://doi.org/10.5281/zenodo.24573238>
+
+The DOI names the archived release of this site that holds the note, its code and its run logs
+(v0.1.1).
 
 This note's writing and results are under
 [CC BY 4.0](https://github.com/haau3/research/blob/main/LICENSE-CC-BY-4.0), and its code under
