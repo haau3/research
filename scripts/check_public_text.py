@@ -12,14 +12,23 @@ and 2 when it cannot run (a bad option or a term that is not a regular expressio
 
 It uses only the standard library, so it runs before anything is installed. Its patterns are
 compiled with re.ASCII, so \\w, \\d and \\b mean what they mean everywhere else.
+
+An evaluation log (`.eval`, a zip of JSON) is read file by file. Most of its text is a benchmark's and
+the models', so the whole log is held to two rules: no credential, and no path from the computer that
+ran it. The --terms apply to the parts the run itself wrote, its settings and metadata (`header.json`
+and `_journal/start.json`). A model's encrypted reasoning is left out, because its random text can
+look like a credential by chance. Inspect compresses logs with Zstandard, which Python's zipfile reads
+from 3.14; on an older Python a log cannot be read, and the check stops with exit 2 rather than skip it.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
 import sys
+import zipfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
@@ -32,6 +41,9 @@ class Rule:
     pattern: re.Pattern[str]
     # A match this returns True for is allowed: (match, the whole text, where the match starts).
     allow: Callable[[str, str, int], bool] | None = None
+    # Cheaper patterns that match wherever `pattern` could: a line none of them finds is skipped. Each
+    # starts with fixed text, which Python's re searches for fast, so a run log is read in seconds.
+    quick: tuple[re.Pattern[str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -86,6 +98,22 @@ def _standard_id(match: str, _text: str, _index: int) -> bool:
     return match.split("-")[0] in STANDARD_PREFIXES
 
 
+# The kinds of credential found, each on its own so that each can also be searched for quickly.
+CREDENTIALS = (
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
+    r"\bgh[pousr]_[A-Za-z0-9]{30,}",
+    r"\bgithub_pat_\w{20,}",
+    r"\bnpm_[A-Za-z0-9]{36}\b",
+    r"\bpypi-AgEIcHlwaS5vcmc[\w-]{20,}",
+    r"\bIv\d{1,2}[.a-zA-Z0-9]{14,}\b",
+    r"\bsk_(live|test)_[A-Za-z0-9]{10,}",
+    r"\bsk-ant-[\w-]{20,}",
+    r"\bsk-(proj-)?[A-Za-z0-9]{32,}",
+    r"\bAIza[\w-]{35}",
+    r"\bhf_[A-Za-z0-9]{30,}",
+    r"\bxox[abpr]-[\w-]{10,}",
+)
+
 RULES: list[Rule] = [
     # `haau3/<name>` on its own names a repository; after a `/` it is a path. A GitHub URL names one
     # wherever it is.
@@ -121,13 +149,9 @@ RULES: list[Rule] = [
     ),
     Rule(
         "a credential",
-        re.compile(
-            r"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{30,}|\bgithub_pat_\w{20,}"
-            r"|\bnpm_[A-Za-z0-9]{36}\b|\bpypi-AgEIcHlwaS5vcmc[\w-]{20,}|\bIv\d{1,2}[.a-zA-Z0-9]{14,}\b"
-            r"|\bsk_(live|test)_[A-Za-z0-9]{10,}|\bsk-ant-[\w-]{20,}|\bsk-(proj-)?[A-Za-z0-9]{32,}"
-            r"|\bAIza[\w-]{35}|\bhf_[A-Za-z0-9]{30,}|\bxox[abpr]-[\w-]{10,}",
-            re.A,
-        ),
+        re.compile("|".join(CREDENTIALS), re.A),
+        # Each kind without its word boundaries matches a superset of it, so a line none finds is clean.
+        quick=tuple(re.compile(part.removeprefix(r"\b").removesuffix(r"\b"), re.A) for part in CREDENTIALS),
     ),
     Rule(
         "an email address outside haau3's public ones",
@@ -149,12 +173,82 @@ NOT_OURS = [
 # This check and its tests, which hold the patterns and their samples.
 THE_CHECK = [re.compile(r"^scripts/check_public_text\.py$"), re.compile(r"^tests/test_public_text\.py$")]
 
+# The rules a whole evaluation log is held to: no credential, and no path from the computer that ran it.
+# A path that starts on its own, never one inside a web address (https://www.asge.org/home/resources/).
+LAPTOP_PATH = Rule(
+    "a path on the computer that ran it",
+    re.compile(r"(?<![\w.:/-])/(Users|home)/[\w.-]+/", re.A),
+    quick=(re.compile("/Users/"), re.compile("/home/")),
+)
+LOG_RULES = [*(rule for rule in RULES if rule.name == "a credential"), LAPTOP_PATH]
+# The files inside a log that the run itself wrote: its settings and metadata. The --terms apply here.
+LOG_OWN = re.compile(r"^(header\.json|_journal/start\.json)$")
+
+
+def check_log(path: str, rules: Sequence[Rule], terms: Sequence[Rule] = ()) -> list[Finding]:
+    """Every file inside an Inspect log: `rules` everywhere, `terms` in the files the run wrote. Raises
+    if the log cannot be read, so it is never skipped."""
+    findings: list[Finding] = []
+    with zipfile.ZipFile(path) as log:
+        for member in log.infolist():
+            text = without_ciphertext(log.read(member).decode("utf-8", errors="replace"))
+            own = LOG_OWN.match(member.filename)
+            findings += check(f"{path}:{member.filename}", text, [*rules, *terms] if own else rules)
+    return findings
+
+
+# A model's encrypted reasoning, which it returns for the next turn and nobody can read: random text in
+# which a few letters can look like a credential by chance. Everything else in a log is still checked.
+CIPHERTEXT = {
+    "reasoning": ("reasoning", "signature"),  # Inspect's reasoning block, when `redacted` is true
+    "redacted_thinking": ("data",),  # Anthropic's raw encrypted thinking
+    "thinking": ("signature",),  # Anthropic's raw thinking: its signature only
+}
+
+
+def without_ciphertext(text: str) -> str:
+    """The text with encrypted reasoning blanked, when it is JSON; otherwise the text unchanged."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return text
+
+    # Inspect keeps a long string once, under `attachments`, and points to it as `attachment://<id>`.
+    pointed: set[str] = set()
+
+    def blank(node: object) -> None:
+        if isinstance(node, dict):
+            kind = node.get("type")
+            fields = CIPHERTEXT.get(kind, ()) if isinstance(kind, str) else ()
+            if kind == "reasoning":
+                fields = fields if node.get("redacted") is True else ("signature",)
+            for name in fields:
+                value = node.get(name)
+                if isinstance(value, str):
+                    if value.startswith("attachment://"):
+                        pointed.add(value.removeprefix("attachment://"))
+                    node[name] = ""
+            for value in node.values():
+                blank(value)
+        elif isinstance(node, list):
+            for value in node:
+                blank(value)
+
+    blank(data)
+    attachments = data.get("attachments") if isinstance(data, dict) else None
+    if isinstance(attachments, dict):
+        for key in pointed & set(attachments):
+            attachments[key] = ""
+    return json.dumps(data, ensure_ascii=False)
+
 
 def check(where: str, text: str, rules: Sequence[Rule] = RULES) -> list[Finding]:
     findings: list[Finding] = []
     offset = 0
     for number, line in enumerate(text.split("\n"), start=1):
         for rule in rules:
+            if rule.quick and not any(q.search(line) for q in rule.quick):
+                continue
             for m in rule.pattern.finditer(line):
                 if rule.allow and rule.allow(m.group(0), text, offset + m.start()):
                     continue
@@ -205,6 +299,13 @@ def main(argv: Sequence[str]) -> int:
     if "--no-files" not in args:
         for path in filter(None, _git("ls-files", "-z").split("\0")):
             if any(p.search(path) for p in NOT_OURS) or not os.path.isfile(path):
+                continue
+            if path.endswith(".eval"):
+                try:
+                    findings += check_log(path, LOG_RULES, terms)
+                except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as error:
+                    print(f"cannot check {path}: {error}", file=sys.stderr)
+                    return 2
                 continue
             # The check's own patterns are left to the private terms alone.
             file_rules = terms if any(p.search(path) for p in THE_CHECK) else rules

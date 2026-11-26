@@ -1,6 +1,16 @@
 ---
 title: haau3 Research
 subtitle: Open research on caregiving, with and without AI.
+listing:
+  id: latest-notes
+  contents: "notes/*/index.qmd"
+  sort: "date desc"
+  type: default
+  fields: [title, date, description]
+  date-format: long
+  max-items: 3
+  sort-ui: false
+  filter-ui: false
 ---
 
 haau3 Research looks for ways to make caregiving better. Much of the work measures how AI models
@@ -12,3 +22,10 @@ Everything here is open for anyone to learn from and build on. Every patient in 
 synthetic. No real person's health data is used.
 
 [What haau3 Research is, and how to cite it](about.qmd)
+
+## Latest notes
+
+::: {#latest-notes}
+:::
+
+[All notes](notes/index.qmd)

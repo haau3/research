@@ -6,3 +6,16 @@ $navbar-fg: #f2f1ee;
 $navbar-hl: #d3754d;
 $footer-bg: #171614;
 $footer-fg: #f2f1ee;
+
+// Code on the dark background: the palette's slate behind paper-coloured text (12.5:1).
+$code-bg: #2d2b29;
+$code-color: #f2f1ee;
+$code-block-bg: #2d2b29;
+
+/*-- scss:rules --*/
+
+// The chart colours for dark mode, chosen and checked against the night background on their own.
+:root {
+  --chart-opus: #d3754d;
+  --chart-gemma: #5b97d6;
+}

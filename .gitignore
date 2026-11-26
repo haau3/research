@@ -8,4 +8,13 @@
 /.venv/
 __pycache__/
 
+# API keys for running evaluations; Inspect reads this file itself
+.env
+
+# A note's trial runs, and the files the build makes from its logs
+notes/*/smoke-logs/
+notes/*/_results.yml
+notes/*/_table-*.md
+notes/*/_chart.md
+
 .DS_Store

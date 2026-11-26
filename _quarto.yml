@@ -4,14 +4,25 @@ project:
   # The site's pages are .qmd files; the repository's own Markdown (README, CONTRIBUTING) is not.
   render:
     - "*.qmd"
+    - "notes/*.qmd"
+    - "notes/*/index.qmd"
+# A note's numbers are made from its logs by `uv run python scripts/note_numbers.py`, which the build
+# runs before rendering. It is not a Quarto pre-render script, because Quarto reads a page's included
+# files before any pre-render script runs.
 
 website:
   title: haau3 Research
   description: Open research on caregiving, with and without AI.
   site-url: https://research.haau3.com
   repo-url: https://github.com/haau3/research
+  # For search: link previews when a page is shared, and each page's one true address (canonical-url,
+  # under html). Google Scholar's tags are switched on in each note, so other pages never look like papers.
+  open-graph: true
+  twitter-card: true
   navbar:
     left:
+      - href: notes/index.qmd
+        text: Notes
       - href: about.qmd
         text: About
     tools:
@@ -38,5 +49,10 @@ format:
       light: [brand, brand/light.scss, brand/site.scss]
       dark: [brand, brand/dark.scss, brand/site.scss]
     respect-user-color-scheme: true
+    # Quarto's highlight styles made to meet WCAG contrast, one for each colour mode.
+    highlight-style:
+      light: a11y
+      dark: a11y-dark
     toc: false
     smooth-scroll: false
+    canonical-url: true

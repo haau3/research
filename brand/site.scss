@@ -49,3 +49,58 @@ main.content {
 .nav-footer {
   border-top: 1px solid rgba($body-color, 0.12);
 }
+
+// A chart from scripts/chart.py: as wide as the text up to a readable size, with a ring in the page
+// colour around each marker so overlapping marks stay apart.
+.chart {
+  display: block;
+  width: 100%;
+  max-width: 30rem;
+  height: auto;
+  margin: 1.5rem 0;
+}
+
+.chart-mark {
+  stroke: var(--bs-body-bg);
+  stroke-width: 2;
+}
+
+// A data table wider than a phone scrolls inside its own region, which WCAG 1.4.10 allows for
+// tables, instead of the whole page. The region takes focus so a keyboard can scroll it.
+.table-scroll {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.table-scroll:focus-visible {
+  outline: 2px solid var(--bs-link-color);
+  outline-offset: 2px;
+}
+
+.table-scroll td,
+.table-scroll th {
+  white-space: nowrap;
+}
+
+.table-scroll td:first-child,
+.table-scroll th:first-child {
+  white-space: normal;
+  min-width: 9rem;
+}
+
+// A long identifier in running text (a model name, a path) wraps rather than widening the page on a
+// phone.
+main p code,
+main li code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// A diagram drawn for a page, read the same way as a chart: as wide as the text up to a readable size.
+.diagram {
+  display: block;
+  width: 100%;
+  max-width: 30rem;
+  height: auto;
+  margin: 1.5rem 0;
+}
