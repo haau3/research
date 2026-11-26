@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: >-
   To cite a note or a study, use the DOI shown on its page. To cite haau3 Research as a whole,
-  cite it as below.
+  cite it as below. Its writing and results are under CC BY 4.0, and its code under MIT.
 title: haau3 Research
 abstract: Open research on caregiving, with and without AI.
 type: software
@@ -9,9 +9,9 @@ authors:
   - family-names: Fung
     given-names: Brian K.
     affiliation: haau3
-license:
-  - MIT
-  - CC-BY-4.0
+# One licence: Zenodo's importer reads `license` as a single value and fails a release on a list.
+# The code's MIT licence is in LICENSE and named in the message above.
+license: CC-BY-4.0
 url: "https://research.haau3.com"
 repository-code: "https://github.com/haau3/research"
 keywords:
