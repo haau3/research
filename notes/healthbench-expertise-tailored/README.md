@@ -21,6 +21,10 @@ smoke run's answers to the same ten conversations, made 14 minutes before the fu
 model revision and settings, from an earlier start of the same server. 194 of Opus's are from a first
 run that was stopped and restarted.
 
+When an API was briefly overloaded, Inspect retried and kept the error's traceback in Opus's log. Its
+48 file paths began with the laptop's home folder; they read `~/research/` instead, and nothing else
+in the log was changed.
+
 ## Run it again
 
 You need [uv](https://docs.astral.sh/uv/), an Anthropic API key and an OpenAI API key in a `.env` file
