@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-NOTE = ROOT / "notes" / "healthbench-who-is-asking"
+NOTE = ROOT / "notes" / "healthbench-expertise-tailored"
 OUT = Path(__file__).resolve().parent / "healthbench"
 sys.path.insert(0, str(NOTE))
 

@@ -18,7 +18,7 @@ from math import sqrt
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-NOTE = ROOT / "notes" / "healthbench-who-is-asking"
+NOTE = ROOT / "notes" / "healthbench-expertise-tailored"
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "healthbench"
 sys.path.insert(0, str(NOTE))
 
@@ -113,33 +113,46 @@ class JudgeTrial(unittest.TestCase):
 
 
 class Cost(unittest.TestCase):
-    """Cost is summed call by call: a call answered from Inspect's cache is free, a batched call costs
-    half, and uncached input, cache writes, cache reads and output each have their own price."""
+    """Cost is summed call by call: a batched call costs half, and uncached input, cache writes, cache
+    reads and output each have their own price. A call answered from Inspect's cache is free in what a
+    run spent and priced once in what its results cost."""
 
-    def test_worked_by_hand(self) -> None:
-        import tomllib
+    PRICES = (
+        'read = 2026-11-25\nbatch_discount = 0.5\n[models."test/model"]\n'
+        "input = 2\noutput = 4\ncache_write = 3\ncache_read = 1\n"
+    )
 
+    def worked_log(self):
         from inspect_ai.model import GenerateConfig, ModelUsage
 
         log = read_eval_log(str(log_of(FIXTURES, "opus")))
         events = [e for s in log.samples for e in s.events if e.event == "model" and e.output]
         for event in events:
-            event.cache = "read"
-        plain, batched = events[0], events[1]
-        for event in (plain, batched):
             event.cache = None
             event.model = "test/model"
+            event.output.usage = ModelUsage(input_tokens=0, output_tokens=0)
+        plain, batched, reused = events[0], events[1], events[2]
         plain.output.usage = ModelUsage(
             input_tokens=1_000_000, input_tokens_cache_write=1_000_000, input_tokens_cache_read=1_000_000, output_tokens=0
         )
         batched.output.usage = ModelUsage(input_tokens=0, output_tokens=1_000_000)
         batched.config = GenerateConfig(batch=True)
-        prices = tomllib.loads(
-            'read = 2026-11-25\nbatch_discount = 0.5\n[models."test/model"]\n'
-            "input = 2\noutput = 4\ncache_write = 3\ncache_read = 1\n"
-        )
-        # Plain: 2 + 3 + 1 for a million each of input, writes and reads. Batched: half of 4.
-        self.assertAlmostEqual(figures.cost(log, prices), 2 + 3 + 1 + 4 * 0.5)
+        reused.output.usage = ModelUsage(input_tokens=1_000_000, output_tokens=0)
+        reused.cache = "read"
+        return log
+
+    def test_what_a_run_spent_worked_by_hand(self) -> None:
+        import tomllib
+
+        # Plain: 2 + 3 + 1 for a million each of input, writes and reads. Batched: half of 4. The
+        # reused call was paid for by an earlier run.
+        self.assertAlmostEqual(figures.cost(self.worked_log(), tomllib.loads(self.PRICES)), 2 + 3 + 1 + 4 * 0.5)
+
+    def test_what_the_results_cost_prices_a_reused_call_once(self) -> None:
+        import tomllib
+
+        cost = figures.cost(self.worked_log(), tomllib.loads(self.PRICES), reused=True)
+        self.assertAlmostEqual(cost, 2 + 3 + 1 + 4 * 0.5 + 2)
 
 
 class Prices(unittest.TestCase):
