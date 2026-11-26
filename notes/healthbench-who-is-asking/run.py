@@ -1,6 +1,6 @@
 """Run this note's three evaluations with Inspect, each into one log in logs/.
 
-  check  The judge, gpt-6-luna, grades answers that physicians already graded: this theme's rows of
+  check  The judge, GPT-4.1, grades answers that physicians already graded: this theme's rows of
          HealthBench's meta-evaluation set. Inspect's stand-in model fills the answer step, so only
          the judge is called.
   opus   Claude Opus 5.5 answers the theme's 919 conversations, and the judge grades each answer
@@ -12,7 +12,8 @@
     uv sync --group harness
     uv run --group harness python notes/healthbench-who-is-asking/run.py check --smoke
 
---smoke runs a few samples, without the Batch API, into smoke-logs/, which is not committed.
+--smoke runs a few samples, without the Batch API unless --batch is given, into smoke-logs/, which is
+not committed.
 """
 
 import argparse
@@ -52,7 +53,10 @@ DATA_SHA256 = {
 THEME = "theme:communication"
 CHECK_CLUSTERS = "cluster:communication_"
 
-JUDGE = "openai/gpt-6-luna"
+# HealthBench's own judge. gpt-6-luna was the first choice; it agreed with physicians far less than
+# the bar this note set before any result, as did four other settings tried on the same 600 rows
+# (judge_trial.py). GPT-4.1 cleared it, and reproduces the paper's agreement on this theme.
+JUDGE = "openai/gpt-4.1"
 OPUS = "anthropic/claude-opus-5-5"
 GEMMA = "openai-api/mlx/mlx-community/gemma-3-12b-it-qat-4bit"
 GEMMA_REPO = "mlx-community/gemma-3-12b-it-qat-4bit"
@@ -106,6 +110,13 @@ def gemma_ready() -> None:
         sys.exit(f"mlx_lm.server is not answering at {GEMMA_SERVER} ({error}); see README.md.")
 
 
+def judge_model(batch: bool) -> Model:
+    """The judge as a model of its own, so the Batch API setting reaches its calls: a setting given to
+    eval() reaches only the model being tested (the first check's log shows the judge's calls were not
+    batched)."""
+    return get_model(JUDGE, config=GenerateConfig(batch=batch))
+
+
 def theme_task(judge: str | Model = JUDGE):
     return healthbench(
         judge_model=judge,
@@ -127,11 +138,8 @@ def score_gemma(logs: Path, batch: bool) -> bool:
         sys.exit(f"{found[0].name}: not a finished, unscored gemma run")
     os.environ.setdefault("MLX_BASE_URL", GEMMA_SERVER)
     os.environ.setdefault("MLX_API_KEY", "not-needed")
-    # eval() reads the API keys from .env itself; scoring a finished log does not, so read it here.
-    load_dotenv(HERE.parents[1] / ".env")
-    judge = get_model(JUDGE, config=GenerateConfig(batch=batch))
-    scored = inspect_ai.score(log, theme_task(judge).scorer, action="overwrite", copy=False)
-    scored.eval.metadata = (scored.eval.metadata or {}) | {"batch": batch, "judged_after_answers": True}
+    scored = inspect_ai.score(log, theme_task(judge_model(batch)).scorer, action="overwrite", copy=False)
+    scored.eval.metadata = (scored.eval.metadata or {}) | {"batch": batch, "judge": JUDGE, "judged_after_answers": True}
     write_eval_log(scored, str(found[0]))
     return scored.status == "success"
 
@@ -140,29 +148,32 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("run", choices=["check", "opus", "gemma", "gemma-judge"])
     parser.add_argument("--smoke", action="store_true", help="a few samples, no batch, into smoke-logs/")
+    parser.add_argument("--batch", action="store_true", help="use the Batch API in a smoke run too")
     parser.add_argument("--connections", type=int, help="parallel requests to the model being tested")
     args = parser.parse_args()
+    # The judge is made before eval() would read the API keys from .env, so read them first.
+    load_dotenv(HERE.parents[1] / ".env")
 
     # The Batch API halves the price and can take up to a day per round. Every sample waits on one
     # answer and then on its criteria one by one, so batching suits the runs where every sample can
     # be open at once. Gemma writes its answers first and the judge reads them afterwards
     # (gemma-judge), so the laptop never waits on a batch.
-    batch = not args.smoke
+    batch = not args.smoke or args.batch
     logs_dir = HERE / ("smoke-logs" if args.smoke else "logs")
     if args.run == "gemma-judge":
         sys.exit(0 if score_gemma(logs_dir, batch) else 1)
 
-    metadata = {"canary": CANARY, "note": HERE.name, "run": args.run, "healthbench_sha256": DATA_SHA256}
+    metadata = {"canary": CANARY, "note": HERE.name, "run": args.run, "judge": JUDGE, "healthbench_sha256": DATA_SHA256}
 
     if args.run == "check":
         ids = check_ids()
-        task = healthbench(subset="meta_eval", judge_model=JUDGE)
+        task = healthbench(subset="meta_eval", judge_model=judge_model(batch))
         model, config = "mockllm/model", GenerateConfig(batch=batch)
         samples = len(ids)
         metadata["check_clusters"] = CHECK_CLUSTERS
     else:
         ids = theme_ids()
-        task = theme_task()
+        task = theme_task(judge_model(batch))
         metadata["theme"] = THEME
         if args.run == "opus":
             model = OPUS

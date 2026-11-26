@@ -34,8 +34,10 @@ the points it could have earned.
 - **Gemma 3 12B**, Google's open-weight model, quantized to 4 bits by Google's own training method
   (`mlx-community/gemma-3-12b-it-qat-4bit`, revision `66fc51e`), served on the laptop by mlx-lm at
   Google's published sampling settings. It does not think before answering.
-- **The judge**, `{{< meta r.judge.model >}}`, OpenAI's replacement for the two models HealthBench was
-  built with, which OpenAI retires in January 2027.
+- **The judge**, `{{< meta r.judge.model >}}`, the model HealthBench's authors checked their grading
+  with. It was not our first choice; the next section says why it is the one we used. OpenAI retires
+  it on 14 January 2027, after which nobody can rerun the grading, though every judgment is in the
+  logs.
 
 The runs used [Inspect](https://inspect.aisi.org.uk/) {{< meta r.inspect.inspect_ai >}} and its
 HealthBench task from inspect_evals {{< meta r.inspect.inspect_evals >}}, on
@@ -77,15 +79,32 @@ the gap is {{< meta r.difference.adjusted.score >}} points (standard error
 {{< meta r.difference.adjusted.se >}}). The coefficient was fitted on a related benchmark, not this
 one.
 
-## How far to trust the judge
+## Choosing the judge, and how far to trust it
 
-Every score here rests on a model's reading of each criterion. Before paying for the main runs we
-checked the judge against physicians: on {{< meta r.judge.rows >}} answers that two physicians each
-graded against one of this theme's criteria, the judge's macro F1 (the average of its F1 scores for
-"met" and "not met") was {{< meta r.judge.f1 >}}. Scored the same way against each other, the
-{{< meta r.judge.physicians >}} physicians averaged {{< meta r.judge.physician_weighted >}}, and the
-median physician scored {{< meta r.judge.physician_median >}}. We fixed the median physician as the
-judge's bar before running the check.
+Every score here rests on a model's reading of each criterion, so before paying for the main runs we
+checked the judge against physicians. HealthBench includes answers that two physicians each graded
+against one of this theme's criteria, met or not met. A judge grades the same answers, and its
+agreement with each physician's grade is its macro F1: the average of its F1 scores for "met" and
+for "not met", so the rarer answer counts as much as the common one. Before any judge ran, we set
+the bar at the median physician: a judge had to agree with the physicians at least as well as the
+middle physician agrees with the others ({{< meta r.judge.physician_median >}}).
+
+Our first choice, OpenAI's newest small model, failed by a wide margin. So did every other current
+model we tried, on the same randomly chosen rows. They all said "met" far less often than the
+physicians did: HealthBench asks the judge to fail an answer if any part of a criterion is not met,
+and today's models apply that rule much more strictly than the physicians or GPT-4.1 did. GPT-4.1,
+the model HealthBench's authors used, agreed with the physicians about as well as the paper reports
+for this theme (0.610, in Table 5 of [arXiv 2505.08775](https://arxiv.org/abs/2505.08775)).
+
+::: {.table-scroll tabindex="0" role="region" aria-label="Judges tried against physicians"}
+{{< include _table-judges.md >}}
+:::
+
+On all {{< meta r.judge.rows >}} rows of the check, GPT-4.1's macro F1 was {{< meta r.judge.f1 >}},
+against the median physician's {{< meta r.judge.physician_median >}}. The
+{{< meta r.judge.physicians >}} physicians averaged {{< meta r.judge.physician_weighted >}} against
+each other. Trying the judges cost {{< meta r.trial.spent >}}, the first judge's full check
+included.
 
 ## What it cost
 
@@ -108,8 +127,9 @@ at haau3 wrote or changed a criterion for this note. The judge, not a person, ap
   not two equal setups.
 - **One answer per conversation.** A second run would give somewhat different answers; the standard
   errors cover the choice of conversations, not that.
-- **The judge is a model**, and it is not the one HealthBench was built with, so these scores are
-  not directly comparable with published HealthBench scores.
+- **The judge is a model.** It is the one HealthBench's authors used, so these scores are closer to
+  published ones than a newer judge's would be, but the newer judges we tried were far stricter: a
+  different judge would put both models lower, and perhaps not by the same amount.
 - **Longer answers score higher** on this benchmark; the length-adjusted gap is shown beside the
   plain one.
 - **The user groups are different conversations**, so they show no tailoring.

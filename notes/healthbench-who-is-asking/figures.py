@@ -28,7 +28,8 @@ from inspect_ai.log import EvalLog, read_eval_log  # noqa: E402
 
 RUNS = ("check", "opus", "gemma")
 NAMES = {"opus": "Claude Opus 5.5", "gemma": "Gemma 3 12B on the laptop"}
-JUDGE = "openai/gpt-6-luna"
+# The judge a log names in its metadata, or this one (decision of 2026-11-25, after the judge trial).
+JUDGE = "openai/gpt-4.1"
 GROUPS = {
     "layperson": "physician_agreed_category:not-health-professional",
     "professional": "physician_agreed_category:health-professional",
@@ -67,6 +68,10 @@ def find_logs(logs: Path) -> dict[str, Path]:
     return {run: found[run][0] for run in RUNS}
 
 
+def judge_of(log: EvalLog) -> str:
+    return (log.eval.metadata or {}).get("judge", JUDGE)
+
+
 def complete(log: EvalLog, path: Path) -> None:
     if log.status != "success":
         raise MissingLog(f"{path.name}: the run ended as {log.status!r}")
@@ -95,6 +100,7 @@ def read_model_run(path: Path) -> ModelRun:
     log = read_eval_log(str(path))
     complete(log, path)
     run = ModelRun(log)
+    judge = judge_of(log)
     for sample in log.samples or []:
         sid = str(sample.id)
         value = next(iter(sample.scores.values()))
@@ -116,7 +122,7 @@ def read_model_run(path: Path) -> ModelRun:
             if possible > 0:
                 run.axis[axis][sid] = sum(c["points"] for c in tagged if c["met"]) / possible
         for event in sample.events:
-            if event.event == "model" and event.model == JUDGE and event.output and event.output.model:
+            if event.event == "model" and event.model == judge and event.output and event.output.model:
                 run.judge_versions.add(event.output.model)
     return run
 
@@ -146,6 +152,7 @@ def read_check_run(path: Path) -> CheckRun:
     items: dict[str, list[stats.Grades]] = defaultdict(list)
     failed = 0
     versions: set[str] = set()
+    judge = judge_of(log)
     for sample in log.samples or []:
         meta = sample.metadata
         value = next(iter(sample.scores.values()))
@@ -153,7 +160,7 @@ def read_check_run(path: Path) -> CheckRun:
         group = "professional" if "_health-professional_" in meta["category"] else "layperson"
         items["all"].append(grade)
         items[group].append(grade)
-        calls = [e for e in sample.events if e.event == "model" and e.model == JUDGE]
+        calls = [e for e in sample.events if e.event == "model" and e.model == judge]
         versions |= {e.output.model for e in calls if e.output and e.output.model}
         # The scorer retries a judge answer it cannot read, then counts the criterion as not met.
         failed += not calls or not judge_answered(calls[-1].output.completion if calls[-1].output else "")
@@ -161,7 +168,67 @@ def read_check_run(path: Path) -> CheckRun:
     return CheckRun(log, items, failed, float(majority), versions)
 
 
-def cost(log: EvalLog, prices: dict) -> float:
+TRIAL_NAMES = {
+    "gpt-4.1": "GPT-4.1, HealthBench's own judge",
+    "haiku": "Claude Haiku 5.5",
+    "luna-high": "gpt-6-luna, high effort",
+    "luna-default": "gpt-6-luna, default",
+    "terra": "gpt-6.1-terra",
+    "luna-no-reasoning": "gpt-6-luna, no reasoning",
+}
+
+
+def read_trial(trial: Path, prices: dict) -> dict:
+    """Every judge tried on the same random rows of the judge check, before one was chosen. The first
+    judge, gpt-6-luna at its default settings, ran on all the rows; it is scored on the same ones."""
+    paths: dict[str, Path] = {}
+    for path in sorted(trial.glob("*.eval")):
+        run = (read_eval_log(str(path), header_only=True).eval.metadata or {}).get("run", "")
+        name = run.removeprefix("judge-trial-") if run.startswith("judge-trial-") else "luna-default" if run == "check" else ""
+        if name in TRIAL_NAMES:
+            paths[name] = path
+    missing = sorted(set(TRIAL_NAMES) - set(paths))
+    if missing:
+        raise MissingLog(f"{trial}: no trial log for {missing}")
+    logs = {name: read_eval_log(str(path)) for name, path in paths.items()}
+    rows = {str(s.id) for s in logs["gpt-4.1"].samples or []}
+    judges, physicians_items = [], []
+    for name, log in logs.items():
+        items = []
+        for sample in log.samples or []:
+            if str(sample.id) in rows:
+                grade = next(iter(sample.scores.values())).value["model_grade"] == "C"
+                meta = sample.metadata
+                items.append(stats.Grades(meta["anonymized_physician_ids"], meta["binary_labels"], grade))
+        if len(items) != len(rows):
+            raise MissingLog(f"{paths[name].name}: {len(items)} of the trial's {len(rows)} rows")
+        physicians_items = items
+        judges.append(
+            {
+                "name": TRIAL_NAMES[name],
+                "f1": stats.judge_f1(items),
+                "met": sum(i.model for i in items) / len(items),
+                "cost": cost(log, prices, rows),
+            }
+        )
+    physicians = stats.physician_agreement(physicians_items)
+    met = sum(sum(i.grades) for i in physicians_items) / sum(len(i.grades) for i in physicians_items)
+    return {
+        "rows": f"{len(rows):,}",
+        "seed": str((logs["gpt-4.1"].eval.metadata or {}).get("seed", "")),
+        "physicians_met": f"{met:.0%}",
+        "physicians_weighted": f"{physicians.weighted:.3f}",
+        "judges": [
+            {"name": j["name"], "f1": f"{j['f1']:.3f}", "met": f"{j['met']:.0%}", "cost": dollars(j["cost"])}
+            for j in sorted(judges, key=lambda j: -j["f1"])
+        ],
+        "cost": dollars(sum(j["cost"] for j in judges)),
+        # What the trial actually spent: the first judge's check ran on every row, not only these.
+        "spent": dollars(sum(cost(log, prices) for log in logs.values())),
+    }
+
+
+def cost(log: EvalLog, prices: dict, ids: set[str] | None = None) -> float:
     """Dollars, summed call by call from the model events in the log and prices.toml.
 
     Call by call, because a judge that grades a finished log (Gemma's run) is recorded in its events
@@ -170,6 +237,8 @@ def cost(log: EvalLog, prices: dict) -> float:
     separate counts (Opus's trial: 1,114 input beside 1,944 written), each priced at its own rate."""
     total = 0.0
     for sample in log.samples or []:
+        if ids is not None and str(sample.id) not in ids:
+            continue
         for event in sample.events:
             if event.event != "model" or event.cache == "read" or not event.output or not event.output.usage:
                 continue
@@ -213,7 +282,7 @@ def subset(values: dict[str, float], ids: set[str]) -> dict[str, float]:
     return {k: v for k, v in values.items() if k in ids}
 
 
-def compute(logs: Path, prices_path: Path) -> dict:
+def compute(logs: Path, prices_path: Path, trial: Path | None = None) -> dict:
     paths = find_logs(logs)
     prices = tomllib.loads(prices_path.read_text())
     check = read_check_run(paths["check"])
@@ -267,7 +336,7 @@ def compute(logs: Path, prices_path: Path) -> dict:
     bar = physicians["all"].percentile(BAR_QUANTILE)
     judge_all = stats.judge_f1(check.items["all"])
     results["judge"] = {
-        "model": JUDGE.split("/", 1)[1],
+        "model": judge_of(check.log).split("/", 1)[1],
         "versions": ", ".join(sorted(check.judge_versions | opus.judge_versions | gemma.judge_versions)),
         "rows": f"{len(check.items['all']):,}",
         "f1": f"{judge_all:.3f}",
@@ -292,6 +361,8 @@ def compute(logs: Path, prices_path: Path) -> dict:
     costs = {run: cost(m.log, prices) for run, m in (("check", check), ("opus", opus), ("gemma", gemma))}
     results["cost"] = {run: dollars(c) for run, c in costs.items()} | {"total": dollars(sum(costs.values()))}
     results["prices_read"] = str(prices["read"])
+    if trial is not None:
+        results["trial"] = read_trial(trial, prices)
     for run, m in (("check", check), ("opus", opus), ("gemma", gemma)):
         usage = m.log.stats.model_usage or {}
         results["runs"][run] = {
@@ -355,6 +426,14 @@ def tables(results: dict) -> tuple[str, str]:
     return scores, "\n".join(lines)
 
 
+def judges_table(trial: dict) -> str:
+    lines = ["| Judge | Agreement with physicians (macro F1) | Says met | Cost |", "|:--|--:|--:|--:|"]
+    lines += [f"| {j['name']} | {j['f1']} | {j['met']} | {j['cost']} |" for j in trial["judges"]]
+    lines += [f"| *Physicians, against each other* | *{trial['physicians_weighted']}* | *{trial['physicians_met']}* | |"]
+    lines += ["", f": Each judge on the same {trial['rows']} randomly chosen rows of the judge check (seed {trial['seed']}). The bar, fixed before any judge ran, was the median physician on all the rows. {{#tbl-judges}}", ""]
+    return "\n".join(lines)
+
+
 def write(results: dict, out: Path) -> None:
     rows = results.pop("chart")["rows"]
     svg = chart.error_bars(
@@ -375,13 +454,15 @@ def write(results: dict, out: Path) -> None:
     scores, axes = tables(results)
     (out / "_table-scores.md").write_text(scores)
     (out / "_table-axes.md").write_text(axes)
+    if "trial" in results:
+        (out / "_table-judges.md").write_text(judges_table(results["trial"]))
     # JSON is YAML, and Quarto reads it as the page's metadata.
     (out / "_results.yml").write_text(json.dumps({"r": results}, indent=1, ensure_ascii=False) + "\n")
 
 
 def main() -> int:
     try:
-        results = compute(HERE / "logs", HERE / "prices.toml")
+        results = compute(HERE / "logs", HERE / "prices.toml", HERE / "judge-trial")
     except MissingLog as error:
         print(f"{HERE.name}: {error}", file=sys.stderr)
         return 1

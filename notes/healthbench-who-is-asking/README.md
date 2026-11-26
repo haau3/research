@@ -10,6 +10,8 @@ three logs in [logs/](logs/).
 | [figures.py](figures.py) | Computes every number on the note from the logs |
 | [prices.toml](prices.toml) | Each model's price, with the page and date it was read |
 | [logs/](logs/) | Inspect's logs: every conversation, answer, judgment and token count |
+| [judge_trial.py](judge_trial.py) | Tries candidate judges on the same 600 rows of the judge check |
+| [judge-trial/](judge-trial/) | Their logs, and the first judge's full check |
 
 ## Run it again
 
