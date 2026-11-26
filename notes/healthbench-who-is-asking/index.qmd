@@ -17,6 +17,8 @@ models: Claude Opus 5.5 through Anthropic's API, and Gemma 3 12B on a laptop wit
 chip and 16 GB of memory. This is the first of a few small experiments, each meant to learn one tool in public. This
 one is about Inspect, open-weight models on a laptop, and error bars.
 
+{{< include _overview.md >}}
+
 ## What we ran
 
 [HealthBench](https://openai.com/index/healthbench/) is OpenAI's benchmark of 5,000 health

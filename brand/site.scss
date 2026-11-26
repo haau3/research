@@ -95,3 +95,12 @@ main li code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+// A diagram drawn for a page, read the same way as a chart: as wide as the text up to a readable size.
+.diagram {
+  display: block;
+  width: 100%;
+  max-width: 30rem;
+  height: auto;
+  margin: 1.5rem 0;
+}
