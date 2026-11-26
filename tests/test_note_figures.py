@@ -103,6 +103,15 @@ class FromTheLogs(unittest.TestCase):
             figures.compute(copy_fixtures(), prices)
 
 
+class JudgeTrial(unittest.TestCase):
+    def test_a_missing_trial_log_stops_the_build_and_names_it(self) -> None:
+        import tomllib
+
+        prices = tomllib.loads(PRICES.read_text())
+        with self.assertRaisesRegex(figures.MissingLog, "gpt-4.1"):
+            figures.read_trial(Path(tempfile.mkdtemp()), prices)
+
+
 class Cost(unittest.TestCase):
     """Cost is summed call by call: a call answered from Inspect's cache is free, a batched call costs
     half, and uncached input, cache writes, cache reads and output each have their own price."""
