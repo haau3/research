@@ -15,6 +15,10 @@ website:
   description: Open research on caregiving, with and without AI.
   site-url: https://research.haau3.com
   repo-url: https://github.com/haau3/research
+  # For search: link previews when a page is shared, and each page's one true address (canonical-url,
+  # under html). Google Scholar's tags are switched on in each note, so other pages never look like papers.
+  open-graph: true
+  twitter-card: true
   navbar:
     left:
       - href: notes/index.qmd
@@ -51,3 +55,4 @@ format:
       dark: a11y-dark
     toc: false
     smooth-scroll: false
+    canonical-url: true

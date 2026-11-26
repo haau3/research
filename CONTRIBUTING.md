@@ -52,6 +52,11 @@ every `figures.py` before it renders (`scripts/note_numbers.py`), so a number ca
 log, and a missing log fails the build. The page itself runs no code: it shows the numbers through
 Quarto's `{{< meta >}}` and includes the tables and chart `figures.py` writes.
 
+A note's front matter turns on Google Scholar's citation tags (`google-scholar: true`) and gives the
+`citation` they are filled from: `type: report`, `publisher: haau3 Research` and the note's `url`.
+Its own "How to cite" section replaces Quarto's appendix (`appendix-cite-as: false`). Every page
+gets link previews and a canonical address from `_quarto.yml`.
+
 Experiments run with [Inspect](https://inspect.aisi.org.uk/). What runs them is installed on its own,
 because the build never needs it:
 
