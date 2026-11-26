@@ -90,7 +90,9 @@ class ModelRun:
     group: dict[str, str] = field(default_factory=dict)
     axis: dict[str, dict[str, float]] = field(default_factory=lambda: defaultdict(dict))
     capped: int = 0
+    filtered: int = 0
     criteria: int = 0
+    shared: int = 0
     judge_failed: int = 0
     versions: set[str] = field(default_factory=set)
     judge_versions: set[str] = field(default_factory=set)
@@ -108,6 +110,7 @@ def read_model_run(path: Path) -> ModelRun:
         run.adjusted[sid] = float(value.value["healthbench_score_length_adjusted"])
         run.length[sid] = len(sample.output.completion)
         run.capped += sample.output.stop_reason == "max_tokens"
+        run.filtered += sample.output.stop_reason == "content_filter"
         if sample.output.model:
             run.versions.add(sample.output.model)
         for name, tag in GROUPS.items():
@@ -115,6 +118,8 @@ def read_model_run(path: Path) -> ModelRun:
                 run.group[sid] = name
         criteria = value.metadata["detailed_results"]
         run.criteria += len(criteria)
+        # The theme's shared criteria, one checklist per kind of user; the judge check covers these.
+        run.shared += sum("level:cluster" in c["tags"] for c in criteria)
         run.judge_failed += sum(str(c["explanation"]).startswith(JUDGE_FAILED) for c in criteria)
         for axis in AXES:
             tagged = [c for c in criteria if f"axis:{axis}" in c["tags"]]
@@ -122,7 +127,8 @@ def read_model_run(path: Path) -> ModelRun:
             if possible > 0:
                 run.axis[axis][sid] = sum(c["points"] for c in tagged if c["met"]) / possible
         for event in sample.events:
-            if event.event == "model" and event.model == judge and event.output and event.output.model:
+            # A call that failed and was sent again names no dated version, so only answers count.
+            if event.event == "model" and event.model == judge and not event.error and event.output and event.output.model:
                 run.judge_versions.add(event.output.model)
     return run
 
@@ -180,11 +186,13 @@ TRIAL_NAMES = {
 
 def read_trial(trial: Path, prices: dict) -> dict:
     """Every judge tried on the same random rows of the judge check, before one was chosen. The first
-    judge, gpt-6-luna at its default settings, ran on all the rows; it is scored on the same ones."""
+    judge, gpt-6-luna at its default settings, ran on all the rows first; its log of that is on the
+    release (over the repository's size limit), and its log here is the same rows from that run,
+    through Inspect's cache."""
     paths: dict[str, Path] = {}
     for path in sorted(trial.glob("*.eval")):
         run = (read_eval_log(str(path), header_only=True).eval.metadata or {}).get("run", "")
-        name = run.removeprefix("judge-trial-") if run.startswith("judge-trial-") else "luna-default" if run == "check" else ""
+        name = run.removeprefix("judge-trial-") if run.startswith("judge-trial-") else ""
         if name in TRIAL_NAMES:
             paths[name] = path
     missing = sorted(set(TRIAL_NAMES) - set(paths))
@@ -208,12 +216,18 @@ def read_trial(trial: Path, prices: dict) -> dict:
                 "name": TRIAL_NAMES[name],
                 "f1": stats.judge_f1(items),
                 "met": sum(i.model for i in items) / len(items),
-                "cost": cost(log, prices, rows),
+                # What this judge costs on these rows, each call once, though luna's came from the cache.
+                "cost": cost(log, prices, rows, reused=True),
             }
         )
     physicians = stats.physician_agreement(physicians_items)
     met = sum(sum(i.grades) for i in physicians_items) / sum(len(i.grades) for i in physicians_items)
+    # The current models tried, apart from GPT-4.1, HealthBench's own judge.
+    current = [j["f1"] for j in judges if j["name"] != TRIAL_NAMES["gpt-4.1"]]
     return {
+        "gpt41_f1": f"{next(j['f1'] for j in judges if j['name'] == TRIAL_NAMES['gpt-4.1']):.3f}",
+        "current_low": f"{min(current):.3f}",
+        "current_high": f"{max(current):.3f}",
         "rows": f"{len(rows):,}",
         "seed": str((logs["gpt-4.1"].eval.metadata or {}).get("seed", "")),
         "physicians_met": f"{met:.0%}",
@@ -223,24 +237,26 @@ def read_trial(trial: Path, prices: dict) -> dict:
             for j in sorted(judges, key=lambda j: -j["f1"])
         ],
         "cost": dollars(sum(j["cost"] for j in judges)),
-        # What the trial actually spent: the first judge's check ran on every row, not only these.
-        "spent": dollars(sum(cost(log, prices) for log in logs.values())),
     }
 
 
-def cost(log: EvalLog, prices: dict, ids: set[str] | None = None) -> float:
+def cost(log: EvalLog, prices: dict, ids: set[str] | None = None, reused: bool = False) -> float:
     """Dollars, summed call by call from the model events in the log and prices.toml.
 
     Call by call, because a judge that grades a finished log (Gemma's run) is recorded in its events
-    but not in the log's totals. A call Inspect answered from its own cache cost nothing; a call sent
-    through a Batch API costs half. Inspect reports uncached input, cache writes and cache reads as
-    separate counts (Opus's trial: 1,114 input beside 1,944 written), each priced at its own rate."""
+    but not in the log's totals. A call Inspect answered from its own cache was paid for by an earlier
+    run: with reused=False it costs nothing here (what this run spent), and with reused=True it is
+    priced like any other call (what the log's results cost, each call once). A call sent through a
+    Batch API costs half. Inspect reports uncached input, cache writes and cache reads as separate
+    counts (Opus's trial: 1,114 input beside 1,944 written), each priced at its own rate."""
     total = 0.0
     for sample in log.samples or []:
         if ids is not None and str(sample.id) not in ids:
             continue
         for event in sample.events:
-            if event.event != "model" or event.cache == "read" or not event.output or not event.output.usage:
+            if event.event != "model" or not event.output or not event.output.usage:
+                continue
+            if event.cache == "read" and not reused:
                 continue
             if event.model not in prices["models"]:
                 raise KeyError(f"prices.toml has no price for {event.model}")
@@ -267,7 +283,14 @@ def signed(x: float) -> str:
 
 def estimate(e: stats.Estimate, sign: bool = False) -> dict[str, str]:
     show = signed if sign else points
-    return {"n": f"{e.n:,}", "score": show(e.mean), "se": f"{100 * e.se:.1f}", "low": show(e.low), "high": show(e.high)}
+    return {
+        "n": f"{e.n:,}",
+        "score": show(e.mean),
+        "size": f"{100 * abs(e.mean):.1f}",  # unsigned, for a sentence that already says which way
+        "se": f"{100 * e.se:.1f}",
+        "low": show(e.low),
+        "high": show(e.high),
+    }
 
 
 def dollars(x: float) -> str:
@@ -303,12 +326,15 @@ def compute(logs: Path, prices_path: Path, trial: Path | None = None) -> dict:
             "adjusted": estimate(stats.mean_se(m.adjusted.values())),
             "length": f"{round(sum(m.length.values()) / len(m.length)):,}",
             "capped": f"{m.capped:,}",
+            "filtered": f"{m.filtered:,}",
             "bootstrap": {
                 "score": points(m.log.results.scores[0].metrics["bootstrap_score"].value),
                 "se": f"{100 * m.log.results.scores[0].metrics['std'].value:.1f}",
             },
             "judge_failed": f"{m.judge_failed:,}",
             "criteria": f"{m.criteria:,}",
+            "shared": f"{m.shared:,}",
+            "own": f"{m.criteria - m.shared:,}",
             "versions": ", ".join(sorted(m.versions)),
         }
         for name in GROUPS:
@@ -358,8 +384,13 @@ def compute(logs: Path, prices_path: Path, trial: Path | None = None) -> dict:
         },
     }
 
-    costs = {run: cost(m.log, prices) for run, m in (("check", check), ("opus", opus), ("gemma", gemma))}
+    # What the results cost: every call in the three runs once, including those a run reused from
+    # Inspect's cache after an earlier run paid for them (the Opus run was restarted once).
+    runs = (("check", check), ("opus", opus), ("gemma", gemma))
+    costs = {run: cost(m.log, prices, reused=True) for run, m in runs}
     results["cost"] = {run: dollars(c) for run, c in costs.items()} | {"total": dollars(sum(costs.values()))}
+    # The check reused the trial's GPT-4.1 grading of its rows, so the trial's cost overlaps by this.
+    results["cost"]["check_reused"] = dollars(costs["check"] - cost(check.log, prices))
     results["prices_read"] = str(prices["read"])
     if trial is not None:
         results["trial"] = read_trial(trial, prices)

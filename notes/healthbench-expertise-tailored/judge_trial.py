@@ -4,7 +4,7 @@ gpt-6-luna, at its default settings, agreed with physicians far less than the ba
 before any result (the median physician's macro F1). This grades one fixed random sample of the
 check's rows with each candidate, into judge-trial/, so the choice rests on the same rows for all.
 
-    uv run --group harness python notes/healthbench-who-is-asking/judge_trial.py [--rows 600] [--only NAME]
+    uv run --group harness python notes/healthbench-expertise-tailored/judge_trial.py [--rows 600] [--only NAME]
 """
 
 import argparse
@@ -23,6 +23,10 @@ from inspect_evals.healthbench import healthbench  # noqa: E402
 
 SEED = 20261125
 CANDIDATES = {
+    # The first judge, at its default settings. Its full check on every row is on the release, outside
+    # the repository (its log is over the repository's 50 MB limit); these rows come from that run
+    # through Inspect's cache.
+    "luna-default": ("openai/gpt-6-luna", GenerateConfig()),
     # HealthBench's original judges did not reason before answering.
     "luna-no-reasoning": ("openai/gpt-6-luna", GenerateConfig(reasoning_effort="none")),
     "luna-high": ("openai/gpt-6-luna", GenerateConfig(reasoning_effort="high")),

@@ -10,7 +10,7 @@
   gemma-judge  The judge then grades Gemma's answers, in the same log.
 
     uv sync --group harness
-    uv run --group harness python notes/healthbench-who-is-asking/run.py check --smoke
+    uv run --group harness python notes/healthbench-expertise-tailored/run.py check --smoke
 
 --smoke runs a few samples, without the Batch API unless --batch is given, into smoke-logs/, which is
 not committed.
@@ -177,7 +177,10 @@ def main() -> None:
         metadata["theme"] = THEME
         if args.run == "opus":
             model = OPUS
-            config = GenerateConfig(max_tokens=MAX_TOKENS, max_connections=args.connections or 8, batch=batch)
+            # In batch mode max_connections is left unset: Inspect holds that many requests open at
+            # once, the judge inherits it, and a set limit makes every batch that small.
+            connections = args.connections or (None if batch else 8)
+            config = GenerateConfig(max_tokens=MAX_TOKENS, max_connections=connections, batch=batch)
             samples = len(ids) if batch else 8
         else:
             gemma_ready()

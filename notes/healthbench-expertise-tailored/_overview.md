@@ -1,7 +1,7 @@
 ```{=html}
 <svg class="diagram" role="img" viewBox="0 0 360 400" aria-labelledby="overview-title overview-desc" xmlns="http://www.w3.org/2000/svg" font-family="inherit">
 <title id="overview-title">How this experiment works</title>
-<desc id="overview-desc">A HealthBench conversation, where a good answer depends on who is asking, goes to two models. Claude Opus 5.5 answers through Anthropic's API; Gemma 3 12B answers on a laptop. GPT-4.1, the judge, checks each answer against the checklist physicians wrote for that conversation, marking each item met or not met. Each answer's score is the points it earned out of the points it could have earned, and the two models are compared conversation by conversation. Before the main runs, the judge was checked against answers physicians had already graded.</desc>
+<desc id="overview-desc">A HealthBench conversation, from a layperson or a health professional, goes to two models. Claude Opus 5.5 answers through Anthropic's API; Gemma 3 12B answers on a laptop. GPT-4.1, the judge, checks each answer against the checklist physicians wrote for that conversation, marking each item met or not met. Each answer's score is the points it earned out of the points it could have earned, and the two models are compared conversation by conversation. Before the main runs, the judge was checked against answers physicians had already graded.</desc>
 <g fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5">
   <rect x="20" y="10" width="320" height="60" rx="8"/>
   <rect x="20" y="210" width="212" height="76" rx="8"/>
@@ -27,7 +27,7 @@
 </g>
 <g fill="currentColor" font-size="13">
   <text x="180" y="33" text-anchor="middle" font-size="14" font-weight="600">A HealthBench conversation</text>
-  <text x="180" y="52" text-anchor="middle">where a good answer depends on who is asking</text>
+  <text x="180" y="52" text-anchor="middle">from a layperson or a health professional</text>
   <text x="95" y="128" text-anchor="middle" font-size="14" font-weight="600">Claude Opus 5.5</text>
   <text x="95" y="148" text-anchor="middle">answers, through</text>
   <text x="95" y="165" text-anchor="middle">Anthropic's API</text>
