@@ -734,16 +734,19 @@ def approve(ids: list[str], on: str) -> list[str]:
     return problems
 
 
-def drop(ids: list[str], note: str, on: str) -> list[str]:
-    """Moves drafts to the screened-out list, so the search never offers them again."""
+def drop(ids: list[str], note: str, on: str, reason: str = "removed on review") -> list[str]:
+    """Moves entries, drafts or approved, to the screened-out list on a reviewer's word, with the
+    reason, so the search never offers them again."""
+    if reason not in REASONS:
+        return [f"{reason!r} is not a listed reason"]
     entries = load(REFERENCES)
     rows = load(SCREENED_OUT)
     by_id = {x["id"]: x for x in entries}
     problems = []
     for entry_id in ids:
         entry = by_id.get(entry_id)
-        if entry is None or not is_draft(entry):
-            problems.append(f"{entry_id}: no such draft")
+        if entry is None:
+            problems.append(f"{entry_id}: no such entry")
             continue
         row = {"title": entry["title"]}
         for field, key in (("DOI", "doi"), ("PMID", "pmid")):
@@ -753,7 +756,7 @@ def drop(ids: list[str], note: str, on: str) -> list[str]:
             row["arxiv"] = entry["number"]
         if not identifiers(row):
             row["url"] = entry.get("URL")
-        row.update({"reason": "removed on review", "note": note, "search": on})
+        row.update({"reason": reason, "note": note, "search": on})
         rows.append(row)
         entries.remove(entry)
     if not problems:
@@ -824,11 +827,12 @@ def main(argv: list[str]) -> int:
     build_cmd.add_argument("--drafts", action="store_true", help="show drafts, for review on a laptop")
     approve_cmd = commands.add_parser("approve")
     approve_cmd.add_argument("ids", nargs="+")
-    approve_cmd.add_argument("--on", default=dt.date.today().isoformat())
+    approve_cmd.add_argument("--on", default=dt.datetime.now(dt.timezone.utc).date().isoformat())
     drop_cmd = commands.add_parser("drop")
     drop_cmd.add_argument("ids", nargs="+")
     drop_cmd.add_argument("--note", required=True)
-    drop_cmd.add_argument("--on", default=dt.date.today().isoformat())
+    drop_cmd.add_argument("--reason", default="removed on review", choices=REASONS)
+    drop_cmd.add_argument("--on", default=dt.datetime.now(dt.timezone.utc).date().isoformat())
     commands.add_parser("pr-body")
     args = parser.parse_args(argv)
 
@@ -850,7 +854,7 @@ def main(argv: list[str]) -> int:
             print(f"wrote {path.relative_to(ROOT)}", file=sys.stderr)
         return 0
     if args.command in ("approve", "drop"):
-        problems = approve(args.ids, args.on) if args.command == "approve" else drop(args.ids, args.note, args.on)
+        problems = approve(args.ids, args.on) if args.command == "approve" else drop(args.ids, args.note, args.on, args.reason)
         for problem in problems:
             print(problem, file=sys.stderr)
         return 1 if problems else 0

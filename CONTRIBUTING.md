@@ -101,7 +101,8 @@ its summary. `uv run python scripts/library.py approve <id>` records the day and
 summary as approved. `scripts/library.py check`, which every build runs, fails on an entry that is
 neither a draft nor approved, and on a summary changed after its approval. To read the drafts as
 pages, run `uv run python scripts/library.py build --drafts` and then `uv run quarto preview`. To set
-a draft aside: `uv run python scripts/library.py drop <id> --note "why"`.
+an entry aside, draft or approved: `uv run python scripts/library.py drop <id> --note "why"`, with
+`--reason "the same work as another entry"` for a paper listed twice.
 
 **The monthly search.** On the first day of each month `.github/workflows/library-search.yml`
 searches PubMed and arXiv for what each area's queries find since its last search, re-checks every
