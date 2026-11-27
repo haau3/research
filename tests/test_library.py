@@ -431,6 +431,50 @@ class TheDrafting(unittest.TestCase):
         # Standard: 4 + 0.2 + 2 = 6.2 dollars; the batch half of that: 3.1.
         self.assertAlmostEqual(usage.cost(), 9.3)
 
+    def test_a_github_run_signs_in_with_federation_and_a_laptop_with_its_key(self) -> None:
+        actions = {"ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.org/token?v=1", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "t"}
+        settings = {name: f"{name.lower()}-value" for name in library_draft.FEDERATION}
+        self.assertEqual(
+            library_draft.federation_settings({**actions, **settings}),
+            {
+                "federation_rule_id": "anthropic_federation_rule_id-value",
+                "organization_id": "anthropic_organization_id-value",
+                "service_account_id": "anthropic_service_account_id-value",
+                "workspace_id": "anthropic_workspace_id-value",
+            },
+        )
+        # The controls: a laptop (no GitHub token) and a GitHub run with no settings use a key.
+        self.assertIsNone(library_draft.federation_settings(settings))
+        self.assertIsNone(library_draft.federation_settings(actions))
+        # A run with some settings and not others stops, naming what is missing.
+        partial = {**actions, "ANTHROPIC_FEDERATION_RULE_ID": "x"}
+        with self.assertRaises(SystemExit) as stopped:
+            library_draft.federation_settings(partial)
+        self.assertIn("ANTHROPIC_WORKSPACE_ID", str(stopped.exception))
+
+    def test_each_exchange_asks_github_for_a_fresh_token_for_anthropic(self) -> None:
+        env = {"ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.org/token?v=1", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "run-token"}
+        asked = []
+
+        class Answer:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read(self):
+                return json.dumps({"value": f"jwt-{len(asked)}"}).encode()
+
+        def urlopen(request, timeout):
+            asked.append((request.full_url, request.get_header("Authorization")))
+            return Answer()
+
+        with mock.patch.object(library_draft.urllib.request, "urlopen", urlopen):
+            first, second = library_draft.github_identity_token(env), library_draft.github_identity_token(env)
+        self.assertEqual((first, second), ("jwt-1", "jwt-2"))
+        self.assertEqual(asked[0], ("https://example.org/token?v=1&audience=https%3A%2F%2Fapi.anthropic.com", "Bearer run-token"))
+
     def test_a_request_id_the_batch_api_accepts(self) -> None:
         for key in ("pmid:12345", "arxiv:2605.29473", "url:https://example.org/a report.pdf"):
             with self.subTest(key=key):
