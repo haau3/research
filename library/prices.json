@@ -1,0 +1,13 @@
+{
+  "about": "US dollars per million tokens, read from Anthropic's pricing page (platform.claude.com/docs/en/about-claude/pricing) on 2026-11-26. The Batch API halves every line. Each run's cost is computed from its usage at these prices.",
+  "read": "2026-11-26",
+  "batch_multiplier": 0.5,
+  "models": {
+    "claude-opus-5-5": {
+      "input": 4.0,
+      "cache_write_5m": 5.0,
+      "cache_read": 0.2,
+      "output": 20.0
+    }
+  }
+}
