@@ -35,6 +35,10 @@ jobs:
       # Every number on a note, computed from its logs; a missing or incomplete log fails here.
       - name: Numbers
         run: uv run python scripts/note_numbers.py
+      # Every Library entry against CSL's schema and the Library's own rules, a draft never listed and
+      # an approved summary unchanged since its approval; then the Library's pages from its entries.
+      - name: Library
+        run: uv run python scripts/library.py build
       - name: Render
         run: uv run quarto render
       - name: Body text is 16 px or more

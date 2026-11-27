@@ -1,0 +1,126 @@
+name: Library search
+
+# On the first day of each month, and whenever it is run by hand (`gh workflow run library-search.yml`),
+# it searches PubMed and arXiv again for every area the Library holds (scripts/library_search.py),
+# re-checks every entry, has a model screen what is new and draft an entry for each paper in scope
+# (scripts/library_draft.py, under library/prompt.md), and opens or updates one pull request as
+# haau3-bot. Nothing is listed on the site until a person approves each entry and merges the pull
+# request, so a month whose search is never merged shows on the area's page as a gap.
+#
+# haau3-bot is a GitHub App, because a pull request opened with this workflow's own token runs no
+# checks until someone approves it. Its token is minted only after the search and the drafting have
+# run, so no installed package's code runs while it exists. The model's key reaches the drafting step
+# only.
+
+on:
+  schedule:
+    # 17 past the hour, because GitHub delays scheduled runs at the top of the hour.
+    - cron: "17 6 1 * *"
+      timezone: "America/New_York"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: library-search
+  cancel-in-progress: false
+
+env:
+  BRANCH: library-search
+  REVIEWER: ${{ vars.HAAU3_BOT_REVIEWER }}
+
+jobs:
+  search:
+    name: Search, screen and draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # A pull request still open from an earlier month is built on, so its drafts, and anything a
+      # person changed in it, are kept, and the search starts where that one ended.
+      - name: Start from the open pull request, if there is one
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          number="$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            git fetch --quiet origin "$BRANCH"
+            git switch --quiet --create "$BRANCH" FETCH_HEAD
+          else
+            git switch --quiet --create "$BRANCH"
+          fi
+          echo "NUMBER=$number" >> "$GITHUB_ENV"
+
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked --group library
+
+      - name: Search
+        run: |
+          set -euo pipefail
+          for file in library/areas/*.json; do
+            uv run --no-sync python scripts/library_search.py search --area "$(basename "$file" .json)"
+          done
+
+      - name: Re-check the entries
+        run: uv run --no-sync python scripts/library_search.py recheck
+
+      - name: Screen and draft
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+          for file in library/areas/*.json; do
+            uv run --no-sync python scripts/library_draft.py --area "$(basename "$file" .json)"
+          done
+
+      - name: Check, and write the pull request's text
+        run: |
+          set -euo pipefail
+          uv run --no-sync python scripts/library.py check
+          uv run --no-sync python scripts/library.py pr-body > "$RUNNER_TEMP/body.md"
+          echo "SEARCHED=$(jq -r 'map(.date) | max' library/searches.json)" >> "$GITHUB_ENV"
+          cat "$RUNNER_TEMP/body.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Mint haau3-bot's token
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.HAAU3_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.HAAU3_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          TOKEN: ${{ steps.token.outputs.token }}
+          SLUG: ${{ steps.token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          bot_email="$(gh api "/users/${SLUG}[bot]" --jq .id)+${SLUG}[bot]@users.noreply.github.com"
+          git config user.name "${SLUG}[bot]"
+          git config user.email "$bot_email"
+          git add library/references.json library/screened-out.json library/searches.json
+          git commit --quiet --message "Search the Library again on $SEARCHED"
+          title="Library: the search of $SEARCHED, for approval"
+          remote="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if [ -n "$NUMBER" ]; then
+            # The open pull request's branch is this run's base, so the push only adds to it.
+            git push --quiet "$remote" "HEAD:refs/heads/$BRANCH"
+            gh pr edit "$NUMBER" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          else
+            # No pull request is open, so a branch left from a closed one is replaced.
+            git push --quiet --force "$remote" "HEAD:refs/heads/$BRANCH"
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md" \
+              ${REVIEWER:+--reviewer "$REVIEWER"}
+          fi
