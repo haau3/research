@@ -10,7 +10,8 @@ uv run quarto preview
 ```
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the rules every page keeps and the checks every pull
-request runs.
+request runs. The Library's entries are one CSL-JSON file, `library/references.json`, which
+reference managers such as Zotero can import.
 
 ## Licences
 
