@@ -39,7 +39,8 @@ writes or checks a criterion.
 - The code, prompts and run logs are published with the note, and every number on a page is
   computed from the saved run.
 - Each note states the model versions, the run dates, what it cost and its limits.
-- Every data file carries a canary string, so it can be kept out of training data.
+- Every file of benchmark data or results carries a canary string, so it can be kept out of
+  training data.
 
 ## Licences
 

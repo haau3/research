@@ -98,6 +98,19 @@ def _standard_id(match: str, _text: str, _index: int) -> bool:
     return match.split("-")[0] in STANDARD_PREFIXES
 
 
+# A DOI, on its own or in a link: 10.1200/CCI-25-00044. Its suffix is the publisher's own code.
+DOI_SO_FAR = re.compile(r"10\.\d{4,9}/\S*$", re.A)
+
+
+def _in_a_doi(match: str, text: str, index: int) -> bool:
+    start = max(text.rfind(c, 0, index) for c in " \t\n\"'(<[") + 1
+    return bool(DOI_SO_FAR.search(text[start:index]))
+
+
+def _standard_id_or_doi(match: str, text: str, index: int) -> bool:
+    return _standard_id(match, text, index) or _in_a_doi(match, text, index)
+
+
 # The kinds of credential found, each on its own so that each can also be searched for quickly.
 CREDENTIALS = (
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
@@ -137,7 +150,7 @@ RULES: list[Rule] = [
         re.compile(r"(?<![\w/&])#\d+\b|\bissues? \d+\b", re.I | re.A),
         _issue_or_colour,
     ),
-    Rule("a ticket or work-item id", re.compile(r"\b[A-Z]{2,10}-\d{1,2}[a-z]?\b", re.A), _standard_id),
+    Rule("a ticket or work-item id", re.compile(r"\b[A-Z]{2,10}-\d{1,2}[a-z]?\b", re.A), _standard_id_or_doi),
     Rule("a planning word", re.compile(r"\b(milestones?|epics?|backlog|roadmap)\b", re.I | re.A)),
     Rule("a person by role", re.compile(r"\b(the owner|owner's)\b", re.I | re.A)),
     Rule("how a service is run", re.compile(r"\b(roll(ed|s)? out|production (build|release))\b", re.I | re.A)),

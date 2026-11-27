@@ -1,0 +1,24 @@
+{
+  "id": "caregiving-and-ai",
+  "theme": "caregiving-and-ai",
+  "title": "Caregiving and AI: research on family caregivers of adults and the AI that converses with them",
+  "from": "2023-01-01",
+  "include": [
+    "Family members and friends who care, unpaid, for another adult.",
+    "AI that converses: chatbots, scripted ones included, and large language models, voice assistants and generative AI that answer or talk with people.",
+    "Studies in which those caregivers use, ask, judge or describe such AI, or in which it is built to support them, including surveys of how caregivers use it and studies of how it answers questions written as a caregiver would ask them.",
+    "Studies that compare how AI answers different people, when a caregiver, or someone asking for another adult, is one of them.",
+    "Research articles, preprints, reviews, benchmarks and datasets, and survey reports from named organisations, in English, published from 2023 on, and earlier work this area started from."
+  ],
+  "exclude": [
+    "Parents caring for children, and paid care workers.",
+    "AI that does not converse, such as sensors, robots without a conversational part, and prediction models.",
+    "A language model used only as a research tool to analyse text about caregivers, such as their posts or interview transcripts.",
+    "Work that mentions caregivers only in passing, such as answers written for \"patients and caregivers\" that no caregiver took part in.",
+    "Editorials, commentaries, letters, news, vendor announcements, and conference abstracts with no paper."
+  ],
+  "search": {
+    "pubmed": "(\"Caregivers\"[Mesh] OR caregiver*[tiab] OR carer*[tiab] OR \"care partner*\"[tiab] OR caregiving[tiab]) AND (\"Large Language Models\"[Mesh] OR \"Generative Artificial Intelligence\"[Mesh] OR chatbot*[tiab] OR \"large language model*\"[tiab] OR LLM[tiab] OR LLMs[tiab] OR \"conversational agent*\"[tiab] OR \"conversational AI\"[tiab] OR \"conversational artificial intelligence\"[tiab] OR \"generative AI\"[tiab] OR \"generative artificial intelligence\"[tiab] OR ChatGPT[tiab] OR \"virtual assistant*\"[tiab] OR \"voice assistant*\"[tiab]) AND english[la] NOT (editorial[pt] OR comment[pt] OR letter[pt] OR news[pt])",
+    "arxiv": "(abs:caregiver OR abs:caregivers OR abs:caregiving OR abs:carer OR abs:carers OR abs:\"care partner\" OR abs:\"care partners\") AND (abs:\"language model\" OR abs:\"language models\" OR abs:LLM OR abs:LLMs OR abs:chatbot OR abs:chatbots OR abs:\"conversational agent\" OR abs:\"conversational agents\" OR abs:\"conversational AI\" OR abs:\"generative AI\" OR abs:ChatGPT OR abs:\"voice assistant\" OR abs:\"voice assistants\")"
+  }
+}

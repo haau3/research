@@ -1,0 +1,29 @@
+---
+title: "Library: research on caregiving, gathered by theme, with each work summarized in our own words"
+description: "Links to research on caregiving, each with a summary in our own words, tagged by theme and grouped into areas that are searched again every month."
+---
+
+The Library links to research on caregiving. Each work has a short summary in our own words, is
+tagged by theme, and sits in an area a reader can open on its own. Each area is searched again every
+month. A model drafts every entry, and a person approves it before it is listed.
+
+## Areas
+
+{{< include _areas.md >}}
+
+## Themes {#themes}
+
+Every entry carries one or more of these twelve themes. Each theme names the subject headings from
+the U.S. National Library of Medicine's Medical Subject Headings (MeSH) that fit it, so the same
+subject can be searched for in PubMed. A theme gets an area page once its entries have been gathered
+and approved.
+
+{{< include _themes.md >}}
+
+## Using the Library
+
+The summaries, themes and other fields are ours, under [CC BY 4.0](https://github.com/haau3/research/blob/main/LICENSE-CC-BY-4.0).
+Each work belongs to its authors: follow its title to read it. Every entry is in
+[one CSL-JSON file](https://github.com/haau3/research/blob/main/library/references.json) that
+reference managers such as Zotero can import. To suggest a work or correct an
+entry, open an issue on [the repository](https://github.com/haau3/research/issues).

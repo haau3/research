@@ -104,3 +104,70 @@ main li code {
   height: auto;
   margin: 1.5rem 0;
 }
+
+// A Library entry: its title, who wrote it, our summary, then its facts. The facts are a description
+// list, two columns where the text has room and one under the other on a phone. Every line is body
+// size.
+.library-entry {
+  margin: 2rem 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba($body-color, 0.12);
+}
+
+.library-entry h3 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+
+// An entry's title is a link inside a heading. Quarto draws third-level headings at 90% opacity,
+// which fades the link's colour below 4.5:1 on the background, so a title is drawn at full opacity.
+.library-entry h3 {
+  opacity: 1;
+}
+
+.library-byline {
+  margin-bottom: 0.75rem;
+}
+
+.library-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.library-facts dt {
+  font-weight: 600;
+}
+
+.library-facts dd {
+  margin: 0 0 0.5rem 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 40rem) {
+  .library-facts {
+    grid-template-columns: 11rem 1fr;
+  }
+
+  .library-facts dd {
+    margin-bottom: 0;
+  }
+}
+
+// A draft shown for review on a laptop (scripts/library.py build --drafts). The published site never
+// shows one.
+.library-draft {
+  border-left: 4px solid $primary;
+  padding: 0.5rem 0.75rem;
+  background: rgba($primary, 0.08);
+}
+
+.library-theme {
+  margin: 1.5rem 0;
+}
+
+.library-theme h3 {
+  font-size: 1.25rem;
+}

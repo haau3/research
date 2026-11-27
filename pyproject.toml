@@ -7,8 +7,12 @@ dependencies = []
 
 [dependency-groups]
 # Quarto builds the site. Its version is pinned here and locked in uv.lock, so the laptop and the
-# workflow build with the same one: `uv run quarto render`.
-dev = ["quarto-cli==1.11.9"]
+# workflow build with the same one: `uv run quarto render`. jsonschema checks every Library entry
+# against CSL's own schema before the Library's pages are built (scripts/library.py).
+dev = [
+  "quarto-cli==1.11.9",
+  "jsonschema==4.26.0",
+]
 # Inspect reads the run logs when the site builds: every number on a note is computed from them.
 notes = ["inspect-ai==0.3.291"]
 # What runs an evaluation, on the laptop only (`uv sync --group harness`): Inspect's ready-made
@@ -20,6 +24,9 @@ harness = [
   "openai==3.57.0",
   "mlx-lm==0.32.2; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
+# What drafts the Library's entries (`uv sync --group library`): Anthropic's SDK, on the laptop and in
+# the monthly search workflow. The build never installs it.
+library = ["anthropic==2.12.0"]
 
 [tool.uv]
 package = false

@@ -2035,6 +2035,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "jsonschema" },
     { name = "quarto-cli" },
 ]
 harness = [
@@ -2043,6 +2044,9 @@ harness = [
     { name = "mlx-lm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "openai" },
 ]
+library = [
+    { name = "anthropic" },
+]
 notes = [
     { name = "inspect-ai" },
 ]
@@ -2050,13 +2054,17 @@ notes = [
 [package.metadata]
 
 [package.metadata.requires-dev]
-dev = [{ name = "quarto-cli", specifier = "==1.11.9" }]
+dev = [
+    { name = "jsonschema", specifier = "==4.26.0" },
+    { name = "quarto-cli", specifier = "==1.11.9" },
+]
 harness = [
     { name = "anthropic", specifier = "==2.12.0" },
     { name = "inspect-evals", extras = ["healthbench"], specifier = "==0.29.0" },
     { name = "mlx-lm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", specifier = "==0.32.2" },
     { name = "openai", specifier = "==3.57.0" },
 ]
+library = [{ name = "anthropic", specifier = "==2.12.0" }]
 notes = [{ name = "inspect-ai", specifier = "==0.3.291" }]
 
 [[package]]

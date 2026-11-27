@@ -1,0 +1,80 @@
+---
+description: "Research on family caregivers of adults and the AI that converses with them: chatbots, large language models and voice assistants, each work summarized in our own words, searched again every month."
+metadata-files:
+  - _area.yml
+---
+
+## What this area covers
+
+{{< include _scope.md >}}
+
+## What is known
+
+- **Caregivers already use general chatbots, mostly to look things up.** In a national US panel of
+  1,300 caregivers, a quarter of those who used chatbots had used one for caregiving, most often for
+  information and less often for emotional support ([Understanding America Study](#entry-monin2026prevalence)).
+  Among 272 caregivers on an advocacy group's email list, 59% had tried AI for caregiving, most often
+  to make sense of a diagnosis ([Caregiver Action Network](#entry-caregiver2026shaping)). Microsoft's
+  researchers report that about one in seven health conversations with Copilot concerned someone else
+  ([Copilot](#entry-costagomes2026people)).
+- **Caregivers ask for the same things across countries and conditions.** In interviews and focus
+  groups they value answers at any hour in plain words. They worry about accuracy, privacy and losing
+  human contact, and they want AI to add to human help and to hand them to a person when a situation
+  is serious.
+- **Experts rate general chatbots' answers to caregivers' questions as mostly accurate, with
+  recurring faults.** Across dementia, stroke, mild cognitive impairment, late-life depression and
+  end-of-life care, answers ran long, read at a college level, seldom cited sources and sometimes
+  left out key steps. In one study they named local services that do not exist
+  ([stroke rehabilitation](#entry-neo2024use)). Crisis is the weakest point: models caught about 12% to
+  45% of crisis signs in scripted caregiver conversations ([InvisibleBench](#entry-madad2025invisiblebench)),
+  and gave clinically acceptable answers to 37% to 63% of high-risk questions about late-life
+  depression ([late-life depression](#entry-xiao2026large)).
+- **Who asks changes the answer.** Models give a caregiver less concrete guidance and more advice to
+  see a professional than a clinician asking the same question ([CoRUS](#entry-kaur2026who),
+  [Curbside Chatbots](#entry-flathers2026curbside)), and they often give way when a caregiver pushes
+  for a less suitable option ([CareDistance](#entry-mishra2026pleasing)).
+- **Tools built for caregivers do better on accuracy and sources, and one trial shows a modest
+  benefit.** Grounding a model in curated caregiving material improved its accuracy and its citations
+  ([CaLM](#entry-parmanto2024reliable)). In the one full randomized trial here, 274 dementia caregivers
+  in 43 countries who used PDC30, an online program built around an AI counselling chatbot, had less
+  depression and burden after one month than those still waiting for it ([PDC30](#entry-cheng2026intervention)).
+
+## What is missing
+
+Read from this area's entries, which come from the searches described below:
+
+- **Trials that measure what happens to caregivers.** Beyond the PDC30 trial, the studies here are
+  pilots, protocols, comparisons without random assignment and tests of model answers. None follows
+  caregivers using a general chatbot as they already do, to see whether it helps or harms them or the
+  person they care for.
+- **Caregivers as judges.** Most evaluations score answers to questions researchers wrote or
+  caregivers posted, rated by clinicians or by another model. Caregivers rated the answers in few of
+  them, as [a scoping review](#entry-gallagher2026scoping) also found.
+- **Conditions beyond dementia, and medicines.** Dementia dominates. Few entries test how AI answers a
+  caregiver's question about another adult's medicines, or questions of consent and whose wishes
+  count.
+- **Conversations over time.** Nearly every evaluation is a single question or a short scripted
+  chat. How answers change over months of use is untested here; it is the subject of the theme
+  [AI over a long relationship](../#theme-ai-over-a-long-relationship).
+- **Who is studied.** Most samples are small and come from the US, China and Europe. Caregivers from
+  minority, rural and non-English-speaking communities appear in a handful of design studies
+  ([Lola](#entry-bosco2025designing), [PflegeBot](#entry-gencer2026co),
+  [cultural prompting](#entry-xie2025cultural)).
+
+## How it was searched
+
+{{< include _search.md >}}
+
+::: {.table-scroll tabindex="0" role="region" aria-label="Every search of this area"}
+{{< include _searches-table.md >}}
+:::
+
+## Entries
+
+{{< include _count.md >}}
+
+{{< include _entries.md >}}
+
+## Limits
+
+{{< include _limits.md >}}

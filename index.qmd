@@ -29,3 +29,10 @@ synthetic. No real person's health data is used.
 :::
 
 [All notes](notes/index.qmd)
+
+## Library
+
+Research on caregiving, gathered by theme, with each work summarized in our own words and each area
+searched again every month.
+
+[The Library](library/index.qmd)
