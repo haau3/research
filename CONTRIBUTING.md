@@ -57,6 +57,14 @@ A note's front matter turns on Google Scholar's citation tags (`google-scholar: 
 Its own "How to cite" section replaces Quarto's appendix (`appendix-cite-as: false`). Every page
 gets link previews and a canonical address from `_quarto.yml`.
 
+Once a note is merged it is released as a new version on GitHub, and Zenodo archives the release
+and gives it a DOI within a few minutes. A follow-up pull request then puts that DOI on the note: as
+`doi:` in its front matter, which adds it to the page's header and Scholar's tags, and in its "How to
+cite" section; a test checks that the two match. Zenodo archives the repository at the release's tag, so a file attached to the GitHub
+release, such as a log over 50 MB, stays on GitHub only. Zenodo also reads `CITATION.cff` and fails
+a release it cannot load, such as one listing two licences, so `tests/test_citation.py` loads it
+the same way.
+
 Experiments run with [Inspect](https://inspect.aisi.org.uk/). What runs them is installed on its own,
 because the build never needs it:
 

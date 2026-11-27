@@ -1,0 +1,3 @@
+# Settings every page under notes/ shares.
+# Quarto labels a page's DOI "Doi" unless told otherwise.
+doi-title: DOI

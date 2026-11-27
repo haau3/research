@@ -11,7 +11,7 @@ three logs in [logs/](logs/).
 | [prices.toml](prices.toml) | Each model's price, with the page and date it was read |
 | [logs/](logs/) | Inspect's logs: every conversation, answer, judgment and token count |
 | [judge_trial.py](judge_trial.py) | Tries candidate judges on the same 600 rows of the judge check |
-| [judge-trial/](judge-trial/) | Their logs on the same 600 rows. The first judge's check on every row (80 MB, over the 50 MB limit for a file here) is attached to the release |
+| [judge-trial/](judge-trial/) | Their logs on the same 600 rows. The first judge's check on every row (80 MB, over the 50 MB limit for a file here) is attached to the [GitHub release](https://github.com/haau3/research/releases/tag/v0.1.1) |
 
 The logs name this folder by its working name, `healthbench-who-is-asking`, in their `note` metadata:
 it was renamed after the runs, before anything was published.
