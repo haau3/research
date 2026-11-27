@@ -156,6 +156,55 @@ class TheCheck(unittest.TestCase):
         self.assertTrue(library.check_screened_out([{k: v for k, v in good.items() if k != "pmid"}]))
 
 
+class TheSearches(unittest.TestCase):
+    def test_an_area_is_searched_at_most_once_a_day(self) -> None:
+        one = {"area": "caregiving-and-ai", "date": "2026-11-27", "window": {"from": "2026-11-20", "to": "2026-11-27"}}
+        # The controls: one search, and two areas the same day.
+        self.assertEqual(library.check_searches([one]), [])
+        self.assertEqual(library.check_searches([one, dict(one, area="dementia-caregiving")]), [])
+        self.assertEqual(library.check_searches([one, dict(one)]), ["searches.json: caregiving-and-ai is searched twice on 2026-11-27"])
+        self.assertEqual(library.check_searches([{"area": "x"}]), ["searches.json: every search needs a date"])
+
+    def test_a_second_search_the_same_day_changes_nothing(self) -> None:
+        today = library_search.dt.datetime.now(library_search.dt.timezone.utc).date().isoformat()
+        searched = [{"area": "caregiving-and-ai", "date": today, "window": {"from": today, "to": today}}]
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        library.dump(folder / "searches.json", searched)
+        output = folder / "github-output"
+        with mock.patch.object(library, "SEARCHES", folder / "searches.json"), \
+                mock.patch.object(library_search, "run_search") as run_search, \
+                mock.patch.dict(library_search.os.environ, {"GITHUB_OUTPUT": str(output)}):
+            self.assertEqual(library_search.main(["search", "--area", "caregiving-and-ai"]), 0)
+        run_search.assert_not_called()
+        self.assertFalse(output.exists())
+        # The control: last searched yesterday, so today's search runs and says so to the workflow.
+        yesterday = (library_search.dt.date.fromisoformat(today) - library_search.dt.timedelta(days=1)).isoformat()
+        library.dump(folder / "searches.json", [dict(searched[0], date=yesterday, window={"from": yesterday, "to": yesterday})])
+        with mock.patch.object(library, "SEARCHES", folder / "searches.json"), \
+                mock.patch.object(library_search, "run_search", return_value={"databases": []}) as run_search, \
+                mock.patch.dict(library_search.os.environ, {"GITHUB_OUTPUT": str(output)}):
+            self.assertEqual(library_search.main(["search", "--area", "caregiving-and-ai"]), 0)
+        run_search.assert_called_once()
+        self.assertEqual(output.read_text(), "searched=true\n")
+
+
+class ThePullRequestText(unittest.TestCase):
+    def test_a_text_too_long_for_github_counts_the_set_aside_papers_then_names_the_drafts(self) -> None:
+        def body(level: str) -> str:
+            return {"full": "x" * 500, "no-screened-list": "y" * 300, "draft-titles": "z" * 100}[level]
+
+        with mock.patch.object(library, "_pr_body", side_effect=body):
+            self.assertEqual(library.pr_body(limit=1000), "x" * 500)
+            self.assertEqual(library.pr_body(limit=400), "y" * 300)
+            self.assertEqual(library.pr_body(limit=150), "z" * 100)
+            cut = library.pr_body(limit=60)
+        self.assertLessEqual(len(cut), 60 + len("\n\n…cut short to fit: read the drafts in `library/references.json`.\n"))
+
+    def test_the_real_text_fits(self) -> None:
+        self.assertLessEqual(len(library.pr_body()), library.PR_BODY_LIMIT)
+
+
 class ThePages(unittest.TestCase):
     area = {"id": "caregiving-and-ai", "theme": "caregiving-and-ai", "title": "Caregiving and AI"}
     names = {t["id"]: t["name"] for t in library.themes()}
@@ -451,6 +500,34 @@ class TheDrafting(unittest.TestCase):
         with self.assertRaises(SystemExit) as stopped:
             library_draft.federation_settings(partial)
         self.assertIn("ANTHROPIC_WORKSPACE_ID", str(stopped.exception))
+
+    def test_a_run_with_nothing_to_screen_still_proves_it_can_sign_in(self) -> None:
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        cache = folder / "cache"
+        (cache / "caregiving-and-ai").mkdir(parents=True)
+        library.dump(cache / "caregiving-and-ai" / "candidates.json", [])
+        library.dump(cache / "caregiving-and-ai" / "run.json", {
+            "area": "caregiving-and-ai", "date": "2026-11-28", "window": {"from": "2026-11-21", "to": "2026-11-28"}, "databases": [],
+        })
+        for name in ("references.json", "screened-out.json", "searches.json"):
+            library.dump(folder / name, [])
+        client = mock.Mock()
+        patches = [
+            mock.patch.object(library, "CACHE", cache),
+            mock.patch.object(library, "REFERENCES", folder / "references.json"),
+            mock.patch.object(library, "SCREENED_OUT", folder / "screened-out.json"),
+            mock.patch.object(library, "SEARCHES", folder / "searches.json"),
+            mock.patch.object(library_draft, "make_client", return_value=client),
+        ]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.assertEqual(library_draft.main(["--area", "caregiving-and-ai"]), 0)
+        client.models.retrieve.assert_called_once_with(library_draft.MODEL)
+        # Nothing to screen, so the model itself was never asked anything.
+        client.messages.create.assert_not_called()
+        self.assertEqual(library.load(folder / "searches.json")[0]["screened"], 0)
 
     def test_each_exchange_asks_github_for_a_fresh_token_for_anthropic(self) -> None:
         env = {"ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.org/token?v=1", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "run-token"}

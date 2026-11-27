@@ -31,6 +31,7 @@ import argparse
 import datetime as dt
 import html
 import json
+import os
 import re
 import sys
 import time
@@ -598,12 +599,21 @@ def main(argv: list[str]) -> int:
 
     if args.command == "search":
         area = area_by_id(args.area)
+        # One search of an area a day: a search is named by its date, which its entries and the
+        # papers it set aside carry. A second run that day changes nothing and says so.
+        if any(s.get("area") == area["id"] and s.get("date") == today.isoformat() for s in library.load(library.SEARCHES)):
+            print(f"{area['id']}: already searched on {today.isoformat()}; nothing to do", file=sys.stderr)
+            return 0
         last = last_search_to(area["id"])
         start = dt.date.fromisoformat(area["from"])
         since = args.since or (max(start, last - dt.timedelta(days=7)) if last else start)
         run = run_search(area, since, args.until or today)
         for database in run["databases"]:
             print(f"{database['name']}: {database['found']} found, {database['new']} new", file=sys.stderr)
+        # The workflow's later steps run only when some area was searched.
+        if os.environ.get("GITHUB_OUTPUT"):
+            with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                output.write("searched=true\n")
         return 0
     if args.command == "seed":
         manual = library.load(args.manual) if args.manual else []

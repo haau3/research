@@ -380,6 +380,9 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
 
     client = make_client()
+    # Every run proves it can sign in, at no cost, even when it has nothing to screen, so a broken
+    # sign-in shows in the month it breaks.
+    client.models.retrieve(MODEL)
     area = library_search.area_by_id(args.area)
     themes = library.themes()
     folder = library_search.area_folder(area["id"])
