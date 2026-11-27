@@ -110,6 +110,14 @@ class AllowsItsOwnText(unittest.TestCase):
         self.assertEqual(found("GPT-5 and BY-4"), [])
         self.assertEqual(found("GPTX-5 and BYE-4"), ["GPTX-5", "BYE-4"])
 
+    def test_a_doi_whose_publisher_code_looks_like_an_id(self) -> None:
+        # A journal's DOI suffix, on its own, quoted in JSON and in a link.
+        doi = '10.1200/CCI-25-00044\n"DOI": "10.1200/GO-25-00647",\n<https://doi.org/10.1200/CCI-25-00042>'
+        self.assertEqual(found(doi), [])
+        # The controls: the same code outside a DOI, and after a DOI in the same sentence.
+        self.assertEqual(found("Fixed in CCI-25."), ["CCI-25"])
+        self.assertEqual(found("See 10.1200/x for CCI-25."), ["CCI-25"])
+
 
 class Options(unittest.TestCase):
     def test_extra_terms_from_a_file_of_patterns_with_comments(self) -> None:
