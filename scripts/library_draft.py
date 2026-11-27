@@ -19,9 +19,15 @@ text is written anywhere but the cache.
 run on a laptop; a batch can take hours. The monthly workflow calls the Messages API directly. A
 paper the model declined to screen or draft is listed in the search's record and its pull request.
 
-The key is ANTHROPIC_API_KEY, from the environment: on a laptop `--env-file .env` loads it, and the
-monthly workflow passes its secret. --keys limits a run to named candidates (pmid:N, arxiv:N), for a
-trial or to draft one paper again.
+On a laptop the model is called with ANTHROPIC_API_KEY, which `--env-file=.env` loads. The monthly
+workflow holds no key: it signs in with Workload Identity Federation. GitHub gives the run an identity
+token that says which repository, branch and workflow it is, and Anthropic exchanges it for an access
+token that lasts minutes, under a rule that accepts only this repository's library-search workflow on
+main. The run's federation settings come from ANTHROPIC_FEDERATION_RULE_ID, ANTHROPIC_ORGANIZATION_ID,
+ANTHROPIC_SERVICE_ACCOUNT_ID and ANTHROPIC_WORKSPACE_ID, and a fresh GitHub token is fetched for each
+exchange, so a run longer than one access token keeps working.
+
+--keys limits a run to named candidates (pmid:N, arxiv:N), for a trial or to draft one paper again.
 """
 
 from __future__ import annotations
@@ -30,9 +36,12 @@ import argparse
 import base64
 import datetime as dt
 import json
+import os
 import re
 import sys
 import time
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -313,6 +322,54 @@ def entry_from(candidate: dict[str, Any], fields: dict[str, Any], read: str, are
     return csl
 
 
+# Signing in -----------------------------------------------------------------------------------------
+
+AUDIENCE = "https://api.anthropic.com"
+FEDERATION = ("ANTHROPIC_FEDERATION_RULE_ID", "ANTHROPIC_ORGANIZATION_ID", "ANTHROPIC_SERVICE_ACCOUNT_ID", "ANTHROPIC_WORKSPACE_ID")
+
+
+def federation_settings(env: dict[str, str]) -> dict[str, str] | None:
+    """The federation settings, when this is a GitHub Actions run that has them all; otherwise None,
+    and the SDK finds its key as it always does."""
+    if not env.get("ACTIONS_ID_TOKEN_REQUEST_URL") or not env.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN"):
+        return None
+    missing = [name for name in FEDERATION if not env.get(name)]
+    if len(missing) == len(FEDERATION):
+        return None
+    if missing:
+        raise SystemExit(f"federation settings missing: {', '.join(missing)}")
+    return {
+        "federation_rule_id": env["ANTHROPIC_FEDERATION_RULE_ID"],
+        "organization_id": env["ANTHROPIC_ORGANIZATION_ID"],
+        "service_account_id": env["ANTHROPIC_SERVICE_ACCOUNT_ID"],
+        "workspace_id": env["ANTHROPIC_WORKSPACE_ID"],
+    }
+
+
+def github_identity_token(env: dict[str, str] | None = None) -> str:
+    """A fresh identity token from GitHub for this run, for Anthropic's audience. Each is used once."""
+    env = os.environ if env is None else env
+    url = env["ACTIONS_ID_TOKEN_REQUEST_URL"]
+    url += ("&" if "?" in url else "?") + urllib.parse.urlencode({"audience": AUDIENCE})
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {env['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)["value"]
+
+
+def make_client() -> Any:
+    import anthropic
+
+    settings = federation_settings(dict(os.environ))
+    if settings is None:
+        return anthropic.Anthropic()
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        # A key in the environment would win over federation without a word (the SDK's order).
+        raise SystemExit("ANTHROPIC_API_KEY is set in a run that signs in with federation; remove it")
+    return anthropic.Anthropic(
+        credentials=anthropic.WorkloadIdentityCredentials(identity_token_provider=github_identity_token, **settings)
+    )
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--area", required=True)
@@ -322,9 +379,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--retry-failed", action="store_true", help="the area's last search's failed papers, added to its record")
     args = parser.parse_args(argv)
 
-    import anthropic
-
-    client = anthropic.Anthropic()
+    client = make_client()
     area = library_search.area_by_id(args.area)
     themes = library.themes()
     folder = library_search.area_folder(area["id"])

@@ -9,8 +9,12 @@ name: Library search
 #
 # haau3-bot is a GitHub App, because a pull request opened with this workflow's own token runs no
 # checks until someone approves it. Its token is minted only after the search and the drafting have
-# run, so no installed package's code runs while it exists. The model's key reaches the drafting step
-# only.
+# run, so no installed package's code runs while it exists.
+#
+# The run holds no key for the model. It signs in with Workload Identity Federation: GitHub gives the
+# job an identity token naming this repository, branch and workflow, and Anthropic exchanges it for an
+# access token that lasts minutes, under a rule that accepts only this workflow on main. The rule's
+# settings reach the drafting step only.
 
 on:
   schedule:
@@ -35,6 +39,10 @@ jobs:
     name: Search, screen and draft
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: read
+      # GitHub's identity token for this run, which the drafting step exchanges with Anthropic.
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -76,7 +84,10 @@ jobs:
 
       - name: Screen and draft
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_FEDERATION_RULE_ID: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
+          ANTHROPIC_ORGANIZATION_ID: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+          ANTHROPIC_SERVICE_ACCOUNT_ID: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
+          ANTHROPIC_WORKSPACE_ID: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
         run: |
           set -euo pipefail
           for file in library/areas/*.json; do
