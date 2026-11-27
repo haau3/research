@@ -397,6 +397,16 @@ class TheDrafting(unittest.TestCase):
         self.assertNotIn("sample", entry["custom"])
         self.assertEqual(entry["custom"]["review-note"], "Borderline: check it.")
 
+    def test_a_pubmed_record_with_no_doi_links_its_pubmed_page(self) -> None:
+        csl = {k: v for k, v in approved_entry().items() if k not in ("id", "custom", "DOI")}
+        fields = {
+            "summary": "A summary.", "themes": ["caregiving-and-ai"], "evidence": "survey", "studied": "carers",
+            "sample_n": 0, "sample_of": "", "peer_reviewed": True, "review_note": "",
+        }
+        entry = library_draft.entry_from({"key": "pmid:12345678", "csl": csl}, fields, "abstract", {"theme": "caregiving-and-ai"}, "2026-11-27", set(), [])
+        self.assertEqual(entry["URL"], "https://pubmed.ncbi.nlm.nih.gov/12345678/")
+        self.assertEqual(problems(entry), [])
+
     def test_the_prompt_has_every_blank_filled(self) -> None:
         area = library_search.area_by_id("caregiving-and-ai")
         text = library_draft.system_prompt(area, library.themes(), "2026-11-27")
