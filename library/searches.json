@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "area": "caregiving-and-ai",
+    "date": "2026-11-27",
+    "window": {
+      "from": "2023-01-01",
+      "to": "2026-11-27"
+    },
+    "databases": [
+      {
+        "name": "PubMed",
+        "query": "(\"Caregivers\"[Mesh] OR caregiver*[tiab] OR carer*[tiab] OR \"care partner*\"[tiab] OR caregiving[tiab]) AND (\"Large Language Models\"[Mesh] OR \"Generative Artificial Intelligence\"[Mesh] OR chatbot*[tiab] OR \"large language model*\"[tiab] OR LLM[tiab] OR LLMs[tiab] OR \"conversational agent*\"[tiab] OR \"conversational AI\"[tiab] OR \"conversational artificial intelligence\"[tiab] OR \"generative AI\"[tiab] OR \"generative artificial intelligence\"[tiab] OR ChatGPT[tiab] OR \"virtual assistant*\"[tiab] OR \"voice assistant*\"[tiab]) AND english[la] NOT (editorial[pt] OR comment[pt] OR letter[pt] OR news[pt])",
+        "found": 464,
+        "new": 458
+      },
+      {
+        "name": "arXiv",
+        "query": "(abs:caregiver OR abs:caregivers OR abs:caregiving OR abs:carer OR abs:carers OR abs:\"care partner\" OR abs:\"care partners\") AND (abs:\"language model\" OR abs:\"language models\" OR abs:LLM OR abs:LLMs OR abs:chatbot OR abs:chatbots OR abs:\"conversational agent\" OR abs:\"conversational agents\" OR abs:\"conversational AI\" OR abs:\"generative AI\" OR abs:ChatGPT OR abs:\"voice assistant\" OR abs:\"voice assistants\")",
+        "found": 106,
+        "new": 98
+      }
+    ],
+    "seeded": 4,
+    "screened": 560,
+    "screened-out": 428,
+    "drafted": 132,
+    "failed": [],
+    "recheck": {
+      "entries": 0,
+      "findings": []
+    },
+    "model": "claude-opus-5-5",
+    "batch": true,
+    "tokens": {
+      "input": 2498001,
+      "cache_write": 14293,
+      "cache_read": 1909099,
+      "output": 197524
+    },
+    "cost-usd": 7.2892
+  }
+]
