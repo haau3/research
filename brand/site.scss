@@ -120,6 +120,12 @@ main li code {
   line-height: 1.35;
 }
 
+// An entry's title is a link inside a heading. Quarto draws third-level headings at 90% opacity,
+// which fades the link's colour below 4.5:1 on the background, so a title is drawn at full opacity.
+.library-entry h3 {
+  opacity: 1;
+}
+
 .library-byline {
   margin-bottom: 0.75rem;
 }

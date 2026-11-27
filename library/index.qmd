@@ -24,6 +24,6 @@ and approved.
 
 The summaries, themes and other fields are ours, under [CC BY 4.0](https://github.com/haau3/research/blob/main/LICENSE-CC-BY-4.0).
 Each work belongs to its authors: follow its title to read it. Every entry is in
-[`library/references.json`](https://github.com/haau3/research/blob/main/library/references.json), a
-CSL-JSON file that reference managers such as Zotero can import. To suggest a work or correct an
+[one CSL-JSON file](https://github.com/haau3/research/blob/main/library/references.json) that
+reference managers such as Zotero can import. To suggest a work or correct an
 entry, open an issue on [the repository](https://github.com/haau3/research/issues).
