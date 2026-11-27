@@ -6,9 +6,12 @@ project:
     - "*.qmd"
     - "notes/*.qmd"
     - "notes/*/index.qmd"
-# A note's numbers are made from its logs by `uv run python scripts/note_numbers.py`, which the build
-# runs before rendering. It is not a Quarto pre-render script, because Quarto reads a page's included
-# files before any pre-render script runs.
+    - "library/index.qmd"
+    - "library/*/index.qmd"
+# A note's numbers are made from its logs by `uv run python scripts/note_numbers.py`, and the Library's
+# pages from its entries by `uv run python scripts/library.py build`; the build runs both before
+# rendering. Neither is a Quarto pre-render script, because Quarto reads a page's included files
+# before any pre-render script runs.
 
 website:
   title: haau3 Research
@@ -23,6 +26,8 @@ website:
     left:
       - href: notes/index.qmd
         text: Notes
+      - href: library/index.qmd
+        text: Library
       - href: about.qmd
         text: About
     tools:

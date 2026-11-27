@@ -1,0 +1,118 @@
+{
+  "about": "The Library's twelve themes. Each is defined once and names NLM's Medical Subject Headings (MeSH) where one fits, with each descriptor's id as NLM's MeSH service gave it on 2026-11-26. An area page exists only for a theme whose area is set.",
+  "themes": [
+    {
+      "id": "caregiving-and-ai",
+      "name": "Caregiving and AI",
+      "definition": "How family caregivers use AI that converses, such as chatbots and large language models, and how well it answers and supports them.",
+      "headings": [
+        {"id": "D017028", "name": "Caregivers"},
+        {"id": "D000098342", "name": "Large Language Models"},
+        {"id": "D000098842", "name": "Generative Artificial Intelligence"},
+        {"id": "D001185", "name": "Artificial Intelligence"}
+      ],
+      "area": "caregiving-and-ai"
+    },
+    {
+      "id": "access-to-records",
+      "name": "Access to records",
+      "definition": "How patients, and the people who help them, see and use health records, including shared access to a patient portal.",
+      "headings": [
+        {"id": "D000072638", "name": "Patient Portals"},
+        {"id": "D033283", "name": "Patient Access to Records"}
+      ],
+      "area": null
+    },
+    {
+      "id": "medication-errors",
+      "name": "Medication errors",
+      "definition": "Mistakes in prescribing, dispensing, giving or taking medicines, including those made at home by patients and caregivers.",
+      "headings": [
+        {"id": "D008508", "name": "Medication Errors"}
+      ],
+      "area": null
+    },
+    {
+      "id": "aging-in-place",
+      "name": "Aging in place",
+      "definition": "Older adults living safely and independently in their own homes and communities as they age.",
+      "headings": [
+        {"id": "D000099093", "name": "Aging in Place"},
+        {"id": "D057187", "name": "Independent Living"}
+      ],
+      "area": null
+    },
+    {
+      "id": "older-adults",
+      "name": "Older adults",
+      "definition": "Research about people aged 65 and over.",
+      "headings": [
+        {"id": "D000368", "name": "Aged"}
+      ],
+      "area": null
+    },
+    {
+      "id": "dementia-caregiving",
+      "name": "Dementia caregiving",
+      "definition": "Caring for a person living with dementia, and what that care asks of family and friends.",
+      "headings": [
+        {"id": "D003704", "name": "Dementia"},
+        {"id": "D017028", "name": "Caregivers"}
+      ],
+      "area": null
+    },
+    {
+      "id": "burden-and-well-being",
+      "name": "Burden and well-being",
+      "definition": "The strain caregiving puts on caregivers' health, time, money and relationships, and what helps them stay well.",
+      "headings": [
+        {"id": "D000084802", "name": "Caregiver Burden"}
+      ],
+      "area": null
+    },
+    {
+      "id": "health-literacy-and-plain-language",
+      "name": "Health literacy and plain language",
+      "definition": "Whether people can find, understand and use health information, and how plain wording helps them.",
+      "headings": [
+        {"id": "D057220", "name": "Health Literacy"}
+      ],
+      "area": null
+    },
+    {
+      "id": "language-barriers",
+      "name": "Language barriers",
+      "definition": "Care for people who speak little English, or a different language from their clinicians, and for the caregivers who interpret for them.",
+      "headings": [
+        {"id": "D000080031", "name": "Limited English Proficiency"}
+      ],
+      "area": null
+    },
+    {
+      "id": "coordination-and-transitions",
+      "name": "Coordination and transitions",
+      "definition": "Organising a person's care across clinicians and settings, and moves between them, such as going home from hospital.",
+      "headings": [
+        {"id": "D000069341", "name": "Transitional Care"}
+      ],
+      "area": null
+    },
+    {
+      "id": "surveys-datasets-and-measures",
+      "name": "Surveys, datasets and measures",
+      "definition": "Sources of data about caregivers and caregiving, the instruments that measure it, and who may use them.",
+      "headings": [
+        {"id": "D011795", "name": "Surveys and Questionnaires"},
+        {"id": "D066264", "name": "Datasets as Topic"}
+      ],
+      "area": null
+    },
+    {
+      "id": "ai-over-a-long-relationship",
+      "name": "AI over a long relationship",
+      "definition": "How an AI's answers change as a person's conversations with it, and what it remembers about them, build up over weeks, months or years.",
+      "headings": [],
+      "area": null
+    }
+  ]
+}

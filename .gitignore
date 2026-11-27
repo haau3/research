@@ -17,4 +17,11 @@ notes/*/_results.yml
 notes/*/_table-*.md
 notes/*/_chart.md
 
+# The Library's pages, built from its entries before every render (scripts/library.py build), and the
+# papers its searches fetch to be read, which are others' words and never committed
+library/_*.md
+library/*/_*.md
+library/*/_area.yml
+library/.cache/
+
 .DS_Store
