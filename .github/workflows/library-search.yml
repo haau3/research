@@ -72,17 +72,26 @@ jobs:
       - name: Install
         run: uv sync --locked --group library
 
+      # An area is searched at most once a day, so a second run that day searches nothing, and every
+      # later step is skipped: no pull request, and a green run that says so in its summary.
       - name: Search
+        id: search
         run: |
           set -euo pipefail
           for file in library/areas/*.json; do
             uv run --no-sync python scripts/library_search.py search --area "$(basename "$file" .json)"
           done
 
+      - name: Nothing to do today
+        if: steps.search.outputs.searched != 'true'
+        run: echo "Every area was already searched today; nothing was changed." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Re-check the entries
+        if: steps.search.outputs.searched == 'true'
         run: uv run --no-sync python scripts/library_search.py recheck
 
       - name: Screen and draft
+        if: steps.search.outputs.searched == 'true'
         env:
           ANTHROPIC_FEDERATION_RULE_ID: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
           ANTHROPIC_ORGANIZATION_ID: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
@@ -91,10 +100,14 @@ jobs:
         run: |
           set -euo pipefail
           for file in library/areas/*.json; do
-            uv run --no-sync python scripts/library_draft.py --area "$(basename "$file" .json)"
+            area="$(basename "$file" .json)"
+            # Only an area searched in this run has a search to draft from.
+            [ -f "library/.cache/$area/run.json" ] || continue
+            uv run --no-sync python scripts/library_draft.py --area "$area"
           done
 
       - name: Check, and write the pull request's text
+        if: steps.search.outputs.searched == 'true'
         run: |
           set -euo pipefail
           uv run --no-sync python scripts/library.py check
@@ -103,6 +116,7 @@ jobs:
           cat "$RUNNER_TEMP/body.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Mint haau3-bot's token
+        if: steps.search.outputs.searched == 'true'
         id: token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -112,6 +126,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Open or update the pull request
+        if: steps.search.outputs.searched == 'true'
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           TOKEN: ${{ steps.token.outputs.token }}

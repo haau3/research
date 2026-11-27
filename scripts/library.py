@@ -362,9 +362,21 @@ def check_all() -> list[str]:
     problems += check_areas(given_areas, theme_ids)
     problems += check_entries(load(REFERENCES), theme_ids, csl_validator())
     problems += check_screened_out(load(SCREENED_OUT))
-    searches = load(SEARCHES)
+    problems += check_searches(load(SEARCHES))
+    return problems
+
+
+def check_searches(searches: list[dict[str, Any]]) -> list[str]:
+    """Every search has a date, and an area is searched at most once a day: a search is named by its
+    date, which its entries and the papers it set aside carry."""
     if not isinstance(searches, list) or any(not valid_date(s.get("date")) for s in searches):
-        problems.append("searches.json: every search needs a date")
+        return ["searches.json: every search needs a date"]
+    seen, problems = set(), []
+    for search in searches:
+        key = (search.get("area"), search["date"])
+        if key in seen:
+            problems.append(f"searches.json: {key[0]} is searched twice on {key[1]}")
+        seen.add(key)
     return problems
 
 
@@ -768,7 +780,22 @@ def drop(ids: list[str], note: str, on: str, reason: str = "removed on review") 
 # The pull request's text ----------------------------------------------------------------------------
 
 
-def pr_body() -> str:
+# GitHub refuses a pull request description over 65,536 characters; this leaves room for its own text.
+PR_BODY_LIMIT = 60_000
+
+
+def pr_body(limit: int = PR_BODY_LIMIT) -> str:
+    """The pull request's text, in full when it fits. When it would not, the papers set aside are
+    counted rather than listed, then each draft is named rather than written out, and the text says
+    where the rest is: the files the pull request changes."""
+    for level in ("full", "no-screened-list", "draft-titles"):
+        text = _pr_body(level)
+        if len(text) <= limit:
+            return text
+    return text[: limit - 200] + "\n\n…cut short to fit: read the drafts in `library/references.json`.\n"
+
+
+def _pr_body(level: str) -> str:
     entries = load(REFERENCES)
     searches = load(SEARCHES)
     theme_names = {t["id"]: t["name"] for t in themes()}
@@ -788,6 +815,12 @@ def pr_body() -> str:
         out.append(f"### Drafts to approve ({len(drafts)})\n")
         if not drafts:
             out.append("None this time.\n")
+        if drafts and level == "draft-titles":
+            out.append("Too many to write out here: each is in `library/references.json`, and as pages with "
+                       "`scripts/library.py build --drafts`.\n")
+            out += [f"{number}. [{entry['title']}]({link(entry)}) `{entry['id']}`" for number, entry in enumerate(drafts, 1)]
+            out.append("")
+            drafts = []
         for number, entry in enumerate(drafts, 1):
             custom = entry["custom"]
             year, month, day = date_parts(entry)
@@ -804,10 +837,13 @@ def pr_body() -> str:
             out.append(f"\n{custom['summary']}\n")
         rows = [r for r in load(SCREENED_OUT) if r.get("search") == last["date"]]
         out.append(f"### Screened out ({len(rows)})\n")
-        out.append("<details><summary>Each paper the model screened out, with its reason</summary>\n")
-        for row in rows:
-            out.append(f"- {row['title']}: {row['reason']}")
-        out.append("\n</details>\n")
+        if level == "full":
+            out.append("<details><summary>Each paper the model screened out, with its reason</summary>\n")
+            for row in rows:
+                out.append(f"- {row['title']}: {row['reason']}")
+            out.append("\n</details>\n")
+        elif rows:
+            out.append("Too many to list here: each, with its reason, is in `library/screened-out.json`.\n")
         recheck = last.get("recheck", {})
         findings = recheck.get("findings", [])
         out.append(f"### Re-check of published entries ({recheck.get('entries', 0)} checked)\n")
