@@ -501,6 +501,34 @@ class TheDrafting(unittest.TestCase):
             library_draft.federation_settings(partial)
         self.assertIn("ANTHROPIC_WORKSPACE_ID", str(stopped.exception))
 
+    def test_a_run_with_nothing_to_screen_still_proves_it_can_sign_in(self) -> None:
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        cache = folder / "cache"
+        (cache / "caregiving-and-ai").mkdir(parents=True)
+        library.dump(cache / "caregiving-and-ai" / "candidates.json", [])
+        library.dump(cache / "caregiving-and-ai" / "run.json", {
+            "area": "caregiving-and-ai", "date": "2026-11-28", "window": {"from": "2026-11-21", "to": "2026-11-28"}, "databases": [],
+        })
+        for name in ("references.json", "screened-out.json", "searches.json"):
+            library.dump(folder / name, [])
+        client = mock.Mock()
+        patches = [
+            mock.patch.object(library, "CACHE", cache),
+            mock.patch.object(library, "REFERENCES", folder / "references.json"),
+            mock.patch.object(library, "SCREENED_OUT", folder / "screened-out.json"),
+            mock.patch.object(library, "SEARCHES", folder / "searches.json"),
+            mock.patch.object(library_draft, "make_client", return_value=client),
+        ]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.assertEqual(library_draft.main(["--area", "caregiving-and-ai"]), 0)
+        client.models.retrieve.assert_called_once_with(library_draft.MODEL)
+        # Nothing to screen, so the model itself was never asked anything.
+        client.messages.create.assert_not_called()
+        self.assertEqual(library.load(folder / "searches.json")[0]["screened"], 0)
+
     def test_each_exchange_asks_github_for_a_fresh_token_for_anthropic(self) -> None:
         env = {"ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.org/token?v=1", "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "run-token"}
         asked = []
