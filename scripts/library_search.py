@@ -21,8 +21,8 @@ arXiv preprint has or has not been published since. It sets `checked` to today o
 could check, and writes what changed to the cache for the pull request.
 
 NCBI asks programs that call its E-utilities to name themselves and give a contact, so every call
-sends tool=haau3-research and the repository's published address. Calls are spaced as NCBI (three a
-second) and arXiv (one every three seconds) ask.
+names research.haau3.com as its tool and gives the contact this repository publishes. Calls are
+spaced as NCBI (three a second) and arXiv (one every three seconds) ask.
 """
 
 from __future__ import annotations
@@ -49,8 +49,8 @@ import library  # noqa: E402
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 CTXP = "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/"
 ARXIV_API = "https://export.arxiv.org/api/query"
-NCBI_ID = {"tool": "haau3-research", "email": "hello@haau3.com"}
-USER_AGENT = "haau3-research/1.0 (https://github.com/haau3/research)"
+NCBI_ID = {"tool": "research.haau3.com", "email": "hello@haau3.com"}
+USER_AGENT = "research.haau3.com/1.0 (+https://github.com/haau3/research)"
 ATOM = {"a": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 # The CSL fields an entry keeps from a source's export. Others are dropped, the abstract above all.
 CSL_KEPT = (

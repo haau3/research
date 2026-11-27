@@ -59,8 +59,7 @@ otherwise its abstract.
   Attribute claims to the work ("the authors report", "the survey found"), and do not judge it. Use
   plain words a caregiver or a builder can follow; explain a term of art when you use one. Never copy
   a phrase from the abstract: if a run of more than six words could be the abstract's, rewrite it.
-  Do not use em dashes, and do not write "X, not Y" contrasts. Do not use the words epic, milestone,
-  roadmap or backlog.
+  Do not use em dashes, and do not write "X, not Y" contrasts.
 - **themes:** every theme from the list that the work is substantially about. Always include
   `{area_theme}`.
 - **evidence:** the kind of work, from the list below.
