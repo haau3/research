@@ -283,6 +283,9 @@ def screened_out_row(candidate: dict[str, Any], reason: str, note: str, search: 
 def entry_from(candidate: dict[str, Any], fields: dict[str, Any], read: str, area: dict[str, Any], search: str, taken: set[str], notes: list[str]) -> dict[str, Any]:
     csl = {k: v for k, v in candidate["csl"].items()}
     csl["id"] = library_search.entry_id(csl, taken)
+    # A PubMed record with no DOI, such as a conference paper's, is linked by its PubMed page.
+    if not csl.get("DOI") and not csl.get("URL") and csl.get("PMID"):
+        csl["URL"] = f"https://pubmed.ncbi.nlm.nih.gov/{csl['PMID']}/"
     themes = [area["theme"]] + [t for t in dict.fromkeys(fields["themes"]) if t != area["theme"]]
     custom: dict[str, Any] = {
         "summary": " ".join(fields["summary"].split()),
@@ -316,6 +319,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--batch", action="store_true", help="use the Message Batches API (half price, slow)")
     parser.add_argument("--limit", type=int, help="only the first N candidates, for a trial")
     parser.add_argument("--keys", nargs="+", help="only these candidates (pmid:N, arxiv:N)")
+    parser.add_argument("--retry-failed", action="store_true", help="the area's last search's failed papers, added to its record")
     args = parser.parse_args(argv)
 
     import anthropic
@@ -330,6 +334,11 @@ def main(argv: list[str]) -> int:
     if args.limit:
         candidates = candidates[: args.limit]
     run = library.load(folder / "run.json")
+    if args.retry_failed:
+        # The papers the area's last search could not screen or draft, run again under that search.
+        run = library.latest_search(area["id"], library.load(library.SEARCHES))
+        failed_keys = {f["key"] for f in run.get("failed", [])}
+        candidates = [c for c in candidates if c["key"] in failed_keys]
     search = run["date"]
     system = [{"type": "text", "text": system_prompt(area, themes, search), "cache_control": {"type": "ephemeral"}}]
     usage = Usage()
@@ -392,19 +401,28 @@ def main(argv: list[str]) -> int:
     library.dump(library.SCREENED_OUT, library.load(library.SCREENED_OUT) + rows)
 
     recheck_path = library.CACHE / "recheck.json"
-    record = {
-        **run,
-        "seeded": sum(1 for c in candidates if c.get("seed")),
-        "screened": len(candidates),
-        "screened-out": len(rows),
-        "drafted": new,
-        "failed": failed,
-        "recheck": library.load(recheck_path) if recheck_path.exists() else {"entries": 0, "findings": []},
-        "model": MODEL,
-        "batch": args.batch,
-        "tokens": usage.total(),
-        "cost-usd": usage.cost(),
-    }
+    if args.retry_failed:
+        # The same search, so its counts grow and its failures are what is still failing.
+        record = dict(run)
+        record["screened-out"] = run["screened-out"] + len(rows)
+        record["drafted"] = run["drafted"] + new
+        record["failed"] = failed
+        record["tokens"] = {k: run["tokens"][k] + v for k, v in usage.total().items()}
+        record["cost-usd"] = round(run["cost-usd"] + usage.cost(), 4)
+    else:
+        record = {
+            **run,
+            "seeded": sum(1 for c in candidates if c.get("seed")),
+            "screened": len(candidates),
+            "screened-out": len(rows),
+            "drafted": new,
+            "failed": failed,
+            "recheck": library.load(recheck_path) if recheck_path.exists() else {"entries": 0, "findings": []},
+            "model": MODEL,
+            "batch": args.batch,
+            "tokens": usage.total(),
+            "cost-usd": usage.cost(),
+        }
     searches = [s for s in library.load(library.SEARCHES) if not (s.get("area") == area["id"] and s.get("date") == search)]
     library.dump(library.SEARCHES, searches + [record])
     print(
