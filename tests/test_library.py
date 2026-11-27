@@ -254,6 +254,15 @@ class ApprovingAndDropping(unittest.TestCase):
         self.assertEqual((row["doi"], row["reason"], row["note"]), ("10.1234/test.2", "removed on review", "out of scope on reading"))
         self.assertEqual(library.check_screened_out([row]), [])
 
+    def test_an_approved_entry_found_twice_is_set_aside_with_its_reason(self) -> None:
+        reason = "the same work as another entry"
+        self.assertEqual(library.drop(["rivera2026caregivers"], "the preprint of chen2025voice", "2026-11-29", reason), [])
+        self.assertEqual([e["id"] for e in library.load(self.references)], ["chen2025voice"])
+        self.assertEqual(library.load(self.screened)[0]["reason"], reason)
+        # The control: a reason the Library does not list changes nothing.
+        self.assertEqual(library.drop(["chen2025voice"], "x", "2026-11-29", "did not like it"), ["'did not like it' is not a listed reason"])
+        self.assertEqual(len(library.load(self.references)), 1)
+
 
 class AsABibliography(unittest.TestCase):
     """A note cites from the Library's file, so pandoc must read every entry in it."""
